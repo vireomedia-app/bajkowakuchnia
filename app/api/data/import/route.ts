@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
 
 export const dynamic = "force-dynamic"
 
@@ -9,7 +10,7 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File
-    
+  
     if (!file) {
       return NextResponse.json(
         { error: 'Nie przesłano pliku' },
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest) {
     // Odczytaj zawartość pliku
     const fileText = await file.text()
     let importData: any
-    
+  
     try {
       importData = JSON.parse(fileText)
     } catch (error) {
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     // UWAGA: To usunie WSZYSTKIE obecne dane!
     // Usuwamy w odpowiedniej kolejności ze względu na foreign keys
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Usuń dane w odpowiedniej kolejności (najpierw zależne)
       await tx.mealPlanRecipe.deleteMany()
       await tx.mealPlanMeal.deleteMany()
@@ -233,7 +234,7 @@ export async function POST(request: NextRequest) {
         mealPlanRecipesCount: mealPlanRecipes.length
       }
     })
-    
+  
   } catch (error) {
     console.error('Error importing data:', error)
     return NextResponse.json(
