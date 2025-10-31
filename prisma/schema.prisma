@@ -1,0 +1,250 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/kartoteka_magazynowa_app/nextjs_space/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model Product {
+  id            String        @id @default(cuid())
+  name          String        @unique
+  unit          String        // kg, szt, l, opak, inne
+  currentStock  Float         @default(0)
+  
+  // Wartości odżywcze (na 100g)
+  manufacturer  String?       // Nazwa producenta
+  calories      Float?        // Kalorie w 100g
+  salt          Float?        // Sól w 100g (g)
+  protein       Float?        // Białko w 100g (g)
+  fat           Float?        // Tłuszcz w 100g (g)
+  saturatedFat  Float?        // Kwasy tłuszczowe nasycone w 100g (g)
+  carbohydrates Float?        // Węglowodany w 100g (g)
+  sugars        Float?        // Cukry w 100g (g)
+  calcium       Float?        // Wapń w 100g (mg)
+  iron          Float?        // Żelazo w 100g (mg)
+  vitaminC      Float?        // Witamina C w 100g (mg)
+  
+  // Alergeny (numery od 1 do 14)
+  allergens     Int[]         @default([])
+  
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  transactions  Transaction[]
+  recipeIngredients RecipeIngredient[]
+
+  @@map("products")
+}
+
+model Transaction {
+  id         String      @id @default(cuid())
+  productId  String
+  date       DateTime
+  document   String
+  type       TransactionType
+  quantity   Float
+  balance    Float
+  createdAt  DateTime    @default(now())
+  
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("transactions")
+}
+
+enum TransactionType {
+  INCOME   // Przychód
+  OUTCOME  // Rozchód
+}
+
+model Backup {
+  id          String   @id @default(cuid())
+  data        String   // JSON snapshot of entire database
+  description String?  // Optional description
+  createdAt   DateTime @default(now())
+
+  @@map("backups")
+  @@index([createdAt])
+}
+
+model Recipe {
+  id          String             @id @default(cuid())
+  name        String             @unique
+  description String?            // Opis przepisu
+  servings    Int                @default(1) // Liczba porcji
+  mealType    MealType?          // Typ posiłku (stare pole, zachowane dla kompatybilności)
+  categories  MealType[]         @default([]) // Kategorie posiłków (nowe pole)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  
+  ingredients RecipeIngredient[]
+  mealPlanRecipes MealPlanRecipe[]
+
+  @@map("recipes")
+}
+
+enum MealType {
+  BREAKFAST          // Śniadanie
+  SECOND_BREAKFAST   // Drugie śniadanie
+  LUNCH              // Obiad
+  FIRST_SNACK        // Podwieczorek I
+  SECOND_SNACK       // Podwieczorek II
+  DINNER             // Kolacja
+  OTHER              // Inne
+}
+
+model RecipeIngredient {
+  id         String   @id @default(cuid())
+  recipeId   String
+  productId  String?  // NULL jeśli produkt nie istnieje w bazie
+  productName String  // Nazwa składnika (może być tymczasowa jeśli produkt nie istnieje)
+  quantity   Float    // Ilość na porcję
+  unit       String   // Jednostka miary (kg, l, szt, g, ml, itd.)
+  
+  recipe     Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  product    Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@map("recipe_ingredients")
+  @@index([recipeId])
+  @@index([productId])
+}
+
+// Normy żywieniowe
+model NutritionalStandards {
+  id                    String   @id @default(cuid())
+  name                  String   // Nazwa zestawu norm (np. "Przedszkole 3-6 lat")
+  
+  // Energia (kalorie)
+  energyMin             Float    @default(870)    // kcal
+  energyMax             Float    @default(1062)   // kcal
+  
+  // Procentowy udział makroskładników w energii
+  proteinPercentMin     Float    @default(10)     // %
+  proteinPercentMax     Float    @default(20)     // %
+  fatPercentMin         Float    @default(30)     // %
+  fatPercentMax         Float    @default(40)     // %
+  carbohydratesPercentMin Float  @default(45)     // %
+  carbohydratesPercentMax Float  @default(65)     // %
+  
+  // Mikroskładniki (wartości docelowe)
+  calcium               Float    @default(750)    // mg
+  iron                  Float    @default(7.5)    // mg
+  vitaminC              Float    @default(37.5)   // mg
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  mealPlans             MealPlan[]
+
+  @@map("nutritional_standards")
+}
+
+// Jadłospis tygodniowy
+model MealPlan {
+  id                    String              @id @default(cuid())
+  name                  String              // Nazwa jadłospisu (np. "Tydzień 4 - Wiosna/Lato")
+  weekNumber            Int?                // Numer tygodnia (opcjonalny)
+  season                Season?             // Sezon
+  description           String?             // Dodatkowy opis
+  standardsId           String?             // ID norm żywieniowych
+  
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  
+  days                  MealPlanDay[]
+  standards             NutritionalStandards? @relation(fields: [standardsId], references: [id], onDelete: SetNull)
+
+  @@map("meal_plans")
+  @@index([weekNumber])
+  @@index([season])
+}
+
+enum Season {
+  SPRING  // Wiosna
+  SUMMER  // Lato
+  AUTUMN  // Jesień
+  WINTER  // Zima
+}
+
+// Dzień w jadłospisie
+model MealPlanDay {
+  id                    String              @id @default(cuid())
+  mealPlanId            String
+  dayOfWeek             Int                 // 1-7 (Poniedziałek-Niedziela)
+  date                  DateTime?           // Opcjonalna konkretna data
+  
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  
+  mealPlan              MealPlan            @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  meals                 MealPlanMeal[]
+
+  @@map("meal_plan_days")
+  @@index([mealPlanId])
+}
+
+// Posiłek w dniu jadłospisu
+model MealPlanMeal {
+  id                    String              @id @default(cuid())
+  mealPlanDayId         String
+  mealType              MealType            // Typ posiłku
+  order                 Int                 @default(0) // Kolejność wyświetlania
+  
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  
+  day                   MealPlanDay         @relation(fields: [mealPlanDayId], references: [id], onDelete: Cascade)
+  recipes               MealPlanRecipe[]
+
+  @@map("meal_plan_meals")
+  @@index([mealPlanDayId])
+}
+
+// Receptura w posiłku (połączenie wiele-do-wielu)
+model MealPlanRecipe {
+  id                    String              @id @default(cuid())
+  mealPlanMealId        String
+  recipeId              String
+  servings              Float               @default(1) // Liczba porcji (może być ułamkowa)
+  order                 Int                 @default(0) // Kolejność wyświetlania
+  
+  createdAt             DateTime            @default(now())
+  
+  meal                  MealPlanMeal        @relation(fields: [mealPlanMealId], references: [id], onDelete: Cascade)
+  recipe                Recipe              @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@map("meal_plan_recipes")
+  @@index([mealPlanMealId])
+  @@index([recipeId])
+}
+
+// Użytkownik (admin)
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // Zahashowane hasło
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  passwordResets PasswordResetToken[]
+
+  @@map("users")
+}
+
+// Token resetowania hasła
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
+  @@index([token])
+  @@index([userId])
+}
