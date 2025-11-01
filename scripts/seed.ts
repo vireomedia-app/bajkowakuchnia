@@ -237,7 +237,7 @@ async function seedRecipes() {
     for (const recipe of recipes) {
       // Znajdź produkty w bazie lub oznacz jako brakujące
       const ingredientsData = recipe.ingredients.map(ing => {
-        const product = productMap.get(ing.name.toLowerCase())
+        const product = productMap.get(ing.name.toLowerCase()) as any
         return {
           productId: product?.id || null,
           productName: ing.name,
