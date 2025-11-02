@@ -12,8 +12,9 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Checkbox } from '@/components/ui/checkbox'
 import { UNITS } from '@/lib/types'
 import { ALLERGENS } from '@/lib/allergens'
-import { Package, AlertCircle } from 'lucide-react'
+import { Package, AlertCircle, Camera } from 'lucide-react'
 import { toast } from 'sonner'
+import { BarcodeScanner } from './barcode-scanner'
 
 interface AddProductModalProps {
   isOpen: boolean
@@ -51,6 +52,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
   })
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isScannerOpen, setIsScannerOpen] = useState(false)
   const router = useRouter()
 
   // Update initial name when prop changes
@@ -87,6 +89,27 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
         : [...prev.allergens, allergenId]
       return { ...prev, allergens }
     })
+  }
+
+  const handleScanSuccess = (productData: any) => {
+    setFormData(prev => ({
+      ...prev,
+      name: productData.name || prev.name,
+      manufacturer: productData.manufacturer || prev.manufacturer,
+      calories: productData.calories?.toString() || prev.calories,
+      salt: productData.salt?.toString() || prev.salt,
+      protein: productData.protein?.toString() || prev.protein,
+      fat: productData.fat?.toString() || prev.fat,
+      saturatedFat: productData.saturatedFat?.toString() || prev.saturatedFat,
+      carbohydrates: productData.carbohydrates?.toString() || prev.carbohydrates,
+      sugars: productData.sugars?.toString() || prev.sugars,
+      calcium: productData.calcium?.toString() || prev.calcium,
+      iron: productData.iron?.toString() || prev.iron,
+      vitaminC: productData.vitaminC?.toString() || prev.vitaminC,
+      allergens: productData.allergens?.length > 0 ? productData.allergens : prev.allergens,
+    }))
+    
+    toast.success('Dane produktu zostały uzupełnione. Sprawdź i dostosuj je przed zapisaniem.')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -198,12 +221,24 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
-            <Package className="w-5 h-5 text-blue-600" />
-            <span>Dodaj nowy produkt</span>
+          <DialogTitle className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Package className="w-5 h-5 text-blue-600" />
+              <span>Dodaj nowy produkt</span>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsScannerOpen(true)}
+              className="flex items-center space-x-2 border-blue-300 text-blue-700 hover:bg-blue-50"
+            >
+              <Camera className="w-4 h-4" />
+              <span className="hidden sm:inline">Skanuj kod</span>
+            </Button>
           </DialogTitle>
           <DialogDescription>
-            Wypełnij podstawowe informacje i wartości odżywcze produktu.
+            Wypełnij podstawowe informacje i wartości odżywcze produktu lub zeskanuj kod kreskowy.
           </DialogDescription>
         </DialogHeader>
         
@@ -516,6 +551,12 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
           </Button>
         </div>
       </DialogContent>
+
+      <BarcodeScanner
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScanSuccess={handleScanSuccess}
+      />
     </Dialog>
   )
 }
