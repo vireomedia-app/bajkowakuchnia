@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Html5Qrcode } from 'html5-qrcode'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Camera, X, AlertCircle, Loader2 } from 'lucide-react'
+import { Camera, X, AlertCircle, Loader2, Settings } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface BarcodeScannerProps {
@@ -18,35 +18,19 @@ export function BarcodeScanner({ isOpen, onClose, onScanSuccess }: BarcodeScanne
   const [isScanning, setIsScanning] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [permissionDenied, setPermissionDenied] = useState(false)
   const scannerRef = useRef<Html5Qrcode | null>(null)
-  const [cameraPermission, setCameraPermission] = useState<'granted' | 'denied' | 'prompt'>('prompt')
 
   useEffect(() => {
-    if (isOpen) {
-      checkCameraPermission()
-    }
     return () => {
       stopScanner()
     }
   }, [isOpen])
 
-  const checkCameraPermission = async () => {
-    try {
-      const result = await navigator.permissions.query({ name: 'camera' as PermissionName })
-      setCameraPermission(result.state as 'granted' | 'denied' | 'prompt')
-      
-      result.addEventListener('change', () => {
-        setCameraPermission(result.state as 'granted' | 'denied' | 'prompt')
-      })
-    } catch (err) {
-      console.log('Permission API not supported', err)
-      setCameraPermission('prompt')
-    }
-  }
-
   const startScanner = async () => {
     try {
       setError(null)
+      setPermissionDenied(false)
       setIsScanning(true)
 
       const scanner = new Html5Qrcode('barcode-reader')
@@ -65,6 +49,7 @@ export function BarcodeScanner({ isOpen, onClose, onScanSuccess }: BarcodeScanne
         ]
       }
 
+      // Próbujemy uruchomić kamerę - przeglądarka automatycznie zapyta o uprawnienia
       await scanner.start(
         { facingMode: 'environment' },
         config,
@@ -81,9 +66,24 @@ export function BarcodeScanner({ isOpen, onClose, onScanSuccess }: BarcodeScanne
       )
     } catch (err: any) {
       console.error('Error starting scanner:', err)
-      setError(err?.message || 'Nie można uruchomić kamery. Sprawdź uprawnienia.')
       setIsScanning(false)
-      toast.error('Nie można uruchomić kamery')
+      
+      // Sprawdź czy to problem z uprawnieniami
+      const errorMsg = err?.message || err?.toString() || ''
+      const isPermissionError = 
+        errorMsg.toLowerCase().includes('permission') ||
+        errorMsg.toLowerCase().includes('notallowed') ||
+        errorMsg.toLowerCase().includes('denied') ||
+        errorMsg.toLowerCase().includes('not allowed')
+      
+      if (isPermissionError) {
+        setPermissionDenied(true)
+        setError('Brak dostępu do kamery')
+        toast.error('Odmówiono dostępu do kamery')
+      } else {
+        setError(errorMsg || 'Nie można uruchomić kamery')
+        toast.error('Nie można uruchomić kamery')
+      }
     }
   }
 
@@ -163,16 +163,13 @@ export function BarcodeScanner({ isOpen, onClose, onScanSuccess }: BarcodeScanne
               <Button
                 onClick={startScanner}
                 className="bg-blue-600 hover:bg-blue-700"
-                disabled={cameraPermission === 'denied'}
               >
                 <Camera className="w-4 h-4 mr-2" />
                 Uruchom kamerę
               </Button>
-              {cameraPermission === 'denied' && (
-                <p className="text-sm text-red-600 mt-3">
-                  Brak uprawnień do kamery. Włącz dostęp w ustawieniach przeglądarki.
-                </p>
-              )}
+              <p className="text-xs text-gray-500 mt-3">
+                💡 Przeglądarka zapyta o dostęp do kamery
+              </p>
             </div>
           )}
 
@@ -210,9 +207,49 @@ export function BarcodeScanner({ isOpen, onClose, onScanSuccess }: BarcodeScanne
             <div className="bg-red-50 border border-red-200 rounded-md p-4">
               <div className="flex items-start space-x-3">
                 <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <div>
+                <div className="flex-1">
                   <p className="text-sm font-medium text-red-900">Błąd</p>
                   <p className="text-sm text-red-700 mt-1">{error}</p>
+                  
+                  {permissionDenied && (
+                    <div className="mt-3 bg-white rounded-md p-3 border border-red-100">
+                      <div className="flex items-start space-x-2 mb-2">
+                        <Settings className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs font-medium text-red-900">Jak włączyć dostęp do kamery:</p>
+                      </div>
+                      
+                      <div className="text-xs text-gray-700 space-y-2 ml-6">
+                        <div>
+                          <p className="font-medium">📱 Safari (iPhone/iPad):</p>
+                          <p className="text-gray-600 ml-3">
+                            Ustawienia → Safari → Kamera → Zezwól
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <p className="font-medium">🌐 Chrome (Android):</p>
+                          <p className="text-gray-600 ml-3">
+                            Ustawienia → Witryny → Uprawnienia → Kamera → Zezwól
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <p className="font-medium">💻 Inne przeglądarki:</p>
+                          <p className="text-gray-600 ml-3">
+                            Kliknij ikonę kłódki w pasku adresu → Uprawnienia → Kamera
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <Button
+                        onClick={startScanner}
+                        size="sm"
+                        className="w-full mt-3 bg-blue-600 hover:bg-blue-700"
+                      >
+                        Spróbuj ponownie
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
