@@ -288,22 +288,22 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
     <div className="space-y-6">
       {/* Header */}
       <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div>
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <CalendarDays className="w-6 h-6" />
-                {mealPlan.name}
+        <CardHeader className="p-4 lg:p-6">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3 lg:gap-0">
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-lg lg:text-2xl flex items-center gap-2">
+                <CalendarDays className="w-5 h-5 lg:w-6 lg:h-6 flex-shrink-0" />
+                <span className="truncate">{mealPlan.name}</span>
               </CardTitle>
               {mealPlan.description && (
-                <CardDescription className="mt-2">{mealPlan.description}</CardDescription>
+                <CardDescription className="mt-2 text-sm">{mealPlan.description}</CardDescription>
               )}
-              <div className="flex gap-3 mt-3">
+              <div className="flex gap-2 lg:gap-3 mt-2 lg:mt-3 flex-wrap">
                 {mealPlan.weekNumber && (
-                  <Badge variant="outline">Tydzień {mealPlan.weekNumber}</Badge>
+                  <Badge variant="outline" className="text-xs">Tydzień {mealPlan.weekNumber}</Badge>
                 )}
                 {mealPlan.season && (
-                  <Badge variant="outline">
+                  <Badge variant="outline" className="text-xs">
                     {mealPlan.season === 'SPRING' ? 'Wiosna' :
                      mealPlan.season === 'SUMMER' ? 'Lato' :
                      mealPlan.season === 'AUTUMN' ? 'Jesień' : 'Zima'}
@@ -311,32 +311,32 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
                 )}
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap lg:flex-nowrap lg:ml-4">
               <Button 
                 variant="default" 
-                className="gap-2"
+                className="gap-1 lg:gap-2 text-xs lg:text-sm h-8 lg:h-10 px-2 lg:px-4"
                 onClick={handleSave}
                 disabled={isSaving}
               >
-                {isSaving ? 'Zapisywanie...' : 'Zapisz jadłospis'}
+                {isSaving ? 'Zapisywanie...' : 'Zapisz'}
               </Button>
               <Button 
                 variant="outline" 
-                className="gap-2"
+                className="gap-1 lg:gap-2 text-xs lg:text-sm h-8 lg:h-10 px-2 lg:px-4"
                 onClick={handleExport}
               >
-                <Download className="w-4 h-4" />
-                Eksport
+                <Download className="w-3 h-3 lg:w-4 lg:h-4" />
+                <span className="hidden sm:inline">Eksport</span>
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button 
                     variant="destructive" 
-                    className="gap-2"
+                    className="gap-1 lg:gap-2 text-xs lg:text-sm h-8 lg:h-10 px-2 lg:px-4"
                     disabled={isDeleting}
                   >
-                    <Trash2 className="w-4 h-4" />
-                    Usuń jadłospis
+                    <Trash2 className="w-3 h-3 lg:w-4 lg:h-4" />
+                    <span className="hidden sm:inline">Usuń</span>
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -364,34 +364,34 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
       </Card>
 
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Recipe Library - Sticky */}
-          <Card className="lg:col-span-1 sticky top-6 self-start">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <ChefHat className="w-5 h-5" />
-                Receptury
+        <div className="flex gap-2 lg:gap-6">
+          {/* Recipe Library - Zawsze widoczna, 50% na mobile, 25% na desktop */}
+          <Card className="w-1/2 lg:w-1/4 sticky top-6 self-start flex-shrink-0">
+            <CardHeader className="p-3 lg:p-6">
+              <CardTitle className="flex items-center gap-2 text-sm lg:text-lg">
+                <ChefHat className="w-4 h-4 lg:w-5 lg:h-5" />
+                <span className="hidden sm:inline">Receptury</span>
               </CardTitle>
               <div className="relative mt-2">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-2 lg:left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 lg:w-4 lg:h-4 text-gray-400" />
                 <Input
-                  placeholder="Szukaj receptury..."
+                  placeholder="Szukaj..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
+                  className="pl-7 lg:pl-9 text-xs lg:text-sm h-8 lg:h-10"
                 />
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <ScrollArea className="h-[calc(100vh-220px)]">
-                <div className="p-4 space-y-4">
+              <ScrollArea className="h-[calc(100vh-160px)] lg:h-[calc(100vh-220px)]">
+                <div className="p-2 lg:p-4 space-y-2 lg:space-y-4">
                   {/* Śniadanie */}
                   {groupedRecipes.BREAKFAST.length > 0 && (
                     <div>
-                      <h4 className="text-xs font-semibold text-gray-600 mb-2 px-2 uppercase tracking-wider">
+                      <h4 className="text-[10px] lg:text-xs font-semibold text-gray-600 mb-1 lg:mb-2 px-1 lg:px-2 uppercase tracking-wider">
                         Śniadanie
                       </h4>
-                      <div className="space-y-2">
+                      <div className="space-y-1 lg:space-y-2">
                         {groupedRecipes.BREAKFAST.map((recipe) => (
                           <RecipeCard key={recipe.id} recipe={recipe} />
                         ))}
@@ -402,10 +402,10 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
                   {/* Drugie śniadanie */}
                   {groupedRecipes.SECOND_BREAKFAST.length > 0 && (
                     <div>
-                      <h4 className="text-xs font-semibold text-gray-600 mb-2 px-2 uppercase tracking-wider">
+                      <h4 className="text-[10px] lg:text-xs font-semibold text-gray-600 mb-1 lg:mb-2 px-1 lg:px-2 uppercase tracking-wider">
                         Drugie śniadanie
                       </h4>
-                      <div className="space-y-2">
+                      <div className="space-y-1 lg:space-y-2">
                         {groupedRecipes.SECOND_BREAKFAST.map((recipe) => (
                           <RecipeCard key={recipe.id} recipe={recipe} />
                         ))}
@@ -416,10 +416,10 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
                   {/* Obiad */}
                   {groupedRecipes.LUNCH.length > 0 && (
                     <div>
-                      <h4 className="text-xs font-semibold text-gray-600 mb-2 px-2 uppercase tracking-wider">
+                      <h4 className="text-[10px] lg:text-xs font-semibold text-gray-600 mb-1 lg:mb-2 px-1 lg:px-2 uppercase tracking-wider">
                         Obiad
                       </h4>
-                      <div className="space-y-2">
+                      <div className="space-y-1 lg:space-y-2">
                         {groupedRecipes.LUNCH.map((recipe) => (
                           <RecipeCard key={recipe.id} recipe={recipe} />
                         ))}
@@ -430,10 +430,10 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
                   {/* Podwieczorek pierwszy */}
                   {groupedRecipes.FIRST_SNACK.length > 0 && (
                     <div>
-                      <h4 className="text-xs font-semibold text-gray-600 mb-2 px-2 uppercase tracking-wider">
-                        Podwieczorek pierwszy
+                      <h4 className="text-[10px] lg:text-xs font-semibold text-gray-600 mb-1 lg:mb-2 px-1 lg:px-2 uppercase tracking-wider">
+                        Podwieczorek I
                       </h4>
-                      <div className="space-y-2">
+                      <div className="space-y-1 lg:space-y-2">
                         {groupedRecipes.FIRST_SNACK.map((recipe) => (
                           <RecipeCard key={recipe.id} recipe={recipe} />
                         ))}
@@ -444,10 +444,10 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
                   {/* Podwieczorek drugi */}
                   {groupedRecipes.SECOND_SNACK.length > 0 && (
                     <div>
-                      <h4 className="text-xs font-semibold text-gray-600 mb-2 px-2 uppercase tracking-wider">
-                        Podwieczorek drugi
+                      <h4 className="text-[10px] lg:text-xs font-semibold text-gray-600 mb-1 lg:mb-2 px-1 lg:px-2 uppercase tracking-wider">
+                        Podwieczorek II
                       </h4>
-                      <div className="space-y-2">
+                      <div className="space-y-1 lg:space-y-2">
                         {groupedRecipes.SECOND_SNACK.map((recipe) => (
                           <RecipeCard key={recipe.id} recipe={recipe} />
                         ))}
@@ -458,10 +458,10 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
                   {/* Bez kategorii */}
                   {groupedRecipes.UNCATEGORIZED.length > 0 && (
                     <div>
-                      <h4 className="text-xs font-semibold text-gray-600 mb-2 px-2 uppercase tracking-wider">
+                      <h4 className="text-[10px] lg:text-xs font-semibold text-gray-600 mb-1 lg:mb-2 px-1 lg:px-2 uppercase tracking-wider">
                         Bez kategorii
                       </h4>
-                      <div className="space-y-2">
+                      <div className="space-y-1 lg:space-y-2">
                         {groupedRecipes.UNCATEGORIZED.map((recipe) => (
                           <RecipeCard key={recipe.id} recipe={recipe} />
                         ))}
@@ -470,7 +470,7 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
                   )}
 
                   {filteredRecipes.length === 0 && (
-                    <div className="text-center py-8 text-gray-500 text-sm">
+                    <div className="text-center py-4 lg:py-8 text-gray-500 text-[10px] lg:text-sm">
                       Brak receptur
                     </div>
                   )}
@@ -479,22 +479,22 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
             </CardContent>
           </Card>
 
-          {/* Meal Plan Editor */}
-          <div className="lg:col-span-3 space-y-6">
+          {/* Meal Plan Editor - 50% na mobile, 75% na desktop */}
+          <div className="w-1/2 lg:w-3/4 space-y-3 lg:space-y-6 flex-shrink-0">
             {/* Day Selector - tylko poniedziałek-piątek */}
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Wybierz dzień tygodnia</CardTitle>
+              <CardHeader className="p-3 lg:pb-3 lg:p-6">
+                <CardTitle className="text-sm lg:text-lg">Wybierz dzień</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-5 gap-2">
+              <CardContent className="p-3 lg:p-6 pt-0">
+                <div className="grid grid-cols-5 gap-1 lg:gap-2">
                   {[1, 2, 3, 4, 5].map((day) => (
                     <Button
                       key={day}
                       variant={selectedDay === day ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setSelectedDay(day)}
-                      className="text-xs"
+                      className="text-[10px] lg:text-xs h-8 lg:h-9 px-1 lg:px-3"
                     >
                       {DAY_OF_WEEK_LABELS[day]}
                     </Button>
@@ -513,28 +513,28 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
                   ? "border-green-500 bg-green-50"
                   : "border-amber-500 bg-amber-50"
               )}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
+                <CardHeader className="p-3 lg:pb-3 lg:p-6">
+                  <CardTitle className="text-xs lg:text-base flex items-center gap-1 lg:gap-2">
                     {validation.energy.isValid && validation.proteinPercent.isValid && 
                      validation.fatPercent.isValid && validation.carbohydratesPercent.isValid &&
                      validation.calcium.isValid && validation.iron.isValid && validation.vitaminC.isValid ? (
                       <>
-                        <CheckCircle className="w-5 h-5 text-green-600" />
-                        <span className="text-green-900">Dzień spełnia wszystkie normy żywieniowe</span>
+                        <CheckCircle className="w-4 h-4 lg:w-5 lg:h-5 text-green-600 flex-shrink-0" />
+                        <span className="text-green-900">Dzień spełnia normy</span>
                       </>
                     ) : (
                       <>
-                        <AlertCircle className="w-5 h-5 text-amber-600" />
-                        <span className="text-amber-900">Uwaga: niektóre wartości poza normą</span>
+                        <AlertCircle className="w-4 h-4 lg:w-5 lg:h-5 text-amber-600 flex-shrink-0" />
+                        <span className="text-amber-900">Uwaga: wartości poza normą</span>
                       </>
                     )}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-2 lg:space-y-4 p-3 lg:p-6 pt-0">
                   {/* Makroskładniki */}
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Makroskładniki</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                    <h4 className="text-[10px] lg:text-sm font-semibold text-gray-700 mb-1 lg:mb-2">Makroskładniki</h4>
+                    <div className="grid grid-cols-2 gap-1 lg:gap-3 text-sm">
                       <ValidationItem
                         label="Energia"
                         value={Math.round(validation.energy.value)}
@@ -575,8 +575,8 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
 
                   {/* Witaminy i minerały */}
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Witaminy i minerały</h4>
-                    <div className="grid grid-cols-3 gap-3 text-sm">
+                    <h4 className="text-[10px] lg:text-sm font-semibold text-gray-700 mb-1 lg:mb-2">Witaminy i minerały</h4>
+                    <div className="grid grid-cols-3 gap-1 lg:gap-3 text-sm">
                       <ValidationItemMineral
                         label="Wapń"
                         value={validation.calcium.value.toFixed(1)}
@@ -655,47 +655,47 @@ function RecipeCard({ recipe }: { recipe: any }) {
       {...listeners}
       {...attributes}
       className={cn(
-        "p-3 bg-white border border-gray-200 rounded-lg cursor-move hover:border-blue-500 hover:shadow-md transition-all",
+        "p-2 lg:p-3 bg-white border border-gray-200 rounded-lg cursor-move hover:border-blue-500 hover:shadow-md transition-all",
         isDragging && "opacity-50"
       )}
     >
-      <div className="font-medium text-sm text-gray-900 mb-2">{recipe.name}</div>
-      <div className="text-xs text-gray-500 mb-2">
+      <div className="font-medium text-[10px] lg:text-sm text-gray-900 mb-1 lg:mb-2 leading-tight">{recipe.name}</div>
+      <div className="text-[9px] lg:text-xs text-gray-500 mb-1 lg:mb-2">
         {recipe.servings} {recipe.servings === 1 ? 'porcja' : 'porcje'}
       </div>
       
       {nutritionPerServing && (
-        <div className="space-y-1.5 pt-2 border-t border-gray-100">
+        <div className="space-y-0.5 lg:space-y-1.5 pt-1 lg:pt-2 border-t border-gray-100">
           {/* Kalorie */}
-          <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center justify-between text-[9px] lg:text-xs">
             <span className="text-gray-600">Energia:</span>
             <span className="font-semibold text-blue-600">{nutritionPerServing.calories} kcal</span>
           </div>
           
           {/* Makroskładniki */}
-          <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center justify-between text-[9px] lg:text-xs">
             <span className="text-gray-600">Białko:</span>
             <span className="font-medium text-gray-800">{nutritionPerServing.protein} g</span>
           </div>
-          <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center justify-between text-[9px] lg:text-xs">
             <span className="text-gray-600">Tłuszcze:</span>
             <span className="font-medium text-gray-800">{nutritionPerServing.fat} g</span>
           </div>
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-600">Węglowodany:</span>
+          <div className="flex items-center justify-between text-[9px] lg:text-xs">
+            <span className="text-gray-600">Węglow.:</span>
             <span className="font-medium text-gray-800">{nutritionPerServing.carbohydrates} g</span>
           </div>
           
           {/* Witaminy i minerały */}
-          <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center justify-between text-[9px] lg:text-xs">
             <span className="text-gray-600">Wapń:</span>
             <span className="font-medium text-gray-800">{nutritionPerServing.calcium} mg</span>
           </div>
-          <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center justify-between text-[9px] lg:text-xs">
             <span className="text-gray-600">Żelazo:</span>
             <span className="font-medium text-gray-800">{nutritionPerServing.iron} mg</span>
           </div>
-          <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center justify-between text-[9px] lg:text-xs">
             <span className="text-gray-600">Wit. C:</span>
             <span className="font-medium text-gray-800">{nutritionPerServing.vitaminC} mg</span>
           </div>
@@ -708,23 +708,23 @@ function RecipeCard({ recipe }: { recipe: any }) {
 function ValidationItem({ label, value, unit, min, max, isValid, subtitle }: any) {
   return (
     <div className={cn(
-      "p-2 rounded-lg",
+      "p-1.5 lg:p-2 rounded-lg",
       isValid ? "bg-green-100" : "bg-red-100"
     )}>
-      <div className="text-xs text-gray-600">{label}</div>
+      <div className="text-[9px] lg:text-xs text-gray-600">{label}</div>
       <div className={cn(
-        "font-bold",
+        "font-bold text-[10px] lg:text-sm",
         isValid ? "text-green-900" : "text-red-900"
       )}>
         {value} {unit}
       </div>
       {subtitle && (
-        <div className="text-xs text-gray-700 mt-0.5">
+        <div className="text-[9px] lg:text-xs text-gray-700 mt-0.5">
           {subtitle}
         </div>
       )}
-      <div className="text-xs text-gray-600 mt-1">
-        Norma: {min}-{max}
+      <div className="text-[8px] lg:text-xs text-gray-600 mt-0.5 lg:mt-1">
+        {min}-{max}
       </div>
     </div>
   );
@@ -737,20 +737,20 @@ function ValidationItemMineral({ label, value, unit, target, isValid }: any) {
   
   return (
     <div className={cn(
-      "p-2 rounded-lg",
+      "p-1.5 lg:p-2 rounded-lg",
       isValid ? "bg-green-100" : "bg-red-100"
     )}>
-      <div className="text-xs text-gray-600">{label}</div>
+      <div className="text-[9px] lg:text-xs text-gray-600">{label}</div>
       <div className={cn(
-        "font-bold",
+        "font-bold text-[10px] lg:text-sm",
         isValid ? "text-green-900" : "text-red-900"
       )}>
         {value} {unit}
       </div>
-      <div className="text-xs text-gray-600 mt-1">
-        Cel: {target} {unit}
+      <div className="text-[8px] lg:text-xs text-gray-600 mt-0.5 lg:mt-1">
+        Cel: {target}
       </div>
-      <div className="text-xs text-gray-500">
+      <div className="text-[8px] lg:text-xs text-gray-500 hidden lg:block">
         ({min}-{max})
       </div>
     </div>
@@ -764,24 +764,24 @@ function MealSlot({ meal, onRemoveRecipe }: any) {
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">{MEAL_TYPE_LABELS[meal.mealType as MealType]}</CardTitle>
+      <CardHeader className="p-2 lg:pb-3 lg:p-6">
+        <CardTitle className="text-xs lg:text-base">{MEAL_TYPE_LABELS[meal.mealType as MealType]}</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-2 lg:p-6 pt-0">
         <div
           ref={setNodeRef}
           className={cn(
-            "min-h-[100px] p-4 rounded-lg border-2 border-dashed transition-colors",
+            "min-h-[60px] lg:min-h-[100px] p-2 lg:p-4 rounded-lg border-2 border-dashed transition-colors",
             isOver ? "border-blue-500 bg-blue-50" : "border-gray-300 bg-gray-50",
             meal.recipes.length === 0 && "flex items-center justify-center"
           )}
         >
           {meal.recipes.length === 0 ? (
-            <div className="text-center text-gray-500 text-sm">
-              Przeciągnij recepturę tutaj
+            <div className="text-center text-gray-500 text-[10px] lg:text-sm">
+              Przeciągnij recepturę
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1 lg:space-y-2">
               {meal.recipes.map((mealRecipe: any) => (
                 <MealRecipeCard
                   key={mealRecipe.id}
@@ -826,20 +826,20 @@ function MealRecipeCard({ mealRecipe, mealId, onRemoveRecipe }: any) {
       {...listeners}
       {...attributes}
       className={cn(
-        "flex items-start justify-between p-3 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow group cursor-move",
+        "flex items-start justify-between p-2 lg:p-3 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow group cursor-move",
         isDragging && "opacity-50"
       )}
     >
       <div className="flex-1 min-w-0">
-        <div className="font-medium text-gray-900 mb-1">
+        <div className="font-medium text-[10px] lg:text-sm text-gray-900 mb-0.5 lg:mb-1 leading-tight">
           {mealRecipe.recipe?.name}
         </div>
-        <div className="text-xs text-gray-500 mb-2">
+        <div className="text-[9px] lg:text-xs text-gray-500 mb-1 lg:mb-2">
           {mealRecipe.servings} {mealRecipe.servings === 1 ? 'porcja' : 'porcje'}
         </div>
         
         {nutritionPerServing && (
-          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs pt-2 border-t border-gray-100">
+          <div className="grid grid-cols-2 gap-x-2 lg:gap-x-3 gap-y-0.5 lg:gap-y-1 text-[9px] lg:text-xs pt-1 lg:pt-2 border-t border-gray-100">
             {/* Kalorie */}
             <div className="flex items-center justify-between col-span-2">
               <span className="text-gray-600">Energia:</span>
@@ -856,20 +856,20 @@ function MealRecipeCard({ mealRecipe, mealId, onRemoveRecipe }: any) {
               <span className="font-medium text-gray-800">{nutritionPerServing.fat} g</span>
             </div>
             <div className="flex items-center justify-between col-span-2">
-              <span className="text-gray-600">Węglowodany:</span>
+              <span className="text-gray-600">Węglow.:</span>
               <span className="font-medium text-gray-800">{nutritionPerServing.carbohydrates} g</span>
             </div>
             
-            {/* Witaminy i minerały */}
-            <div className="flex items-center justify-between">
+            {/* Witaminy i minerały - ukryte na mobile dla oszczędności miejsca */}
+            <div className="hidden lg:flex items-center justify-between">
               <span className="text-gray-600">Wapń:</span>
               <span className="font-medium text-gray-800">{nutritionPerServing.calcium} mg</span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="hidden lg:flex items-center justify-between">
               <span className="text-gray-600">Żelazo:</span>
               <span className="font-medium text-gray-800">{nutritionPerServing.iron} mg</span>
             </div>
-            <div className="flex items-center justify-between col-span-2">
+            <div className="hidden lg:flex items-center justify-between col-span-2">
               <span className="text-gray-600">Wit. C:</span>
               <span className="font-medium text-gray-800">{nutritionPerServing.vitaminC} mg</span>
             </div>
@@ -880,9 +880,9 @@ function MealRecipeCard({ mealRecipe, mealId, onRemoveRecipe }: any) {
         variant="ghost"
         size="sm"
         onClick={() => onRemoveRecipe(mealId, mealRecipe.id)}
-        className="opacity-0 group-hover:opacity-100 transition-opacity ml-2 flex-shrink-0"
+        className="opacity-0 group-hover:opacity-100 lg:opacity-100 transition-opacity ml-1 lg:ml-2 flex-shrink-0 h-6 w-6 lg:h-8 lg:w-8 p-0"
       >
-        <Trash2 className="w-4 h-4 text-red-600" />
+        <Trash2 className="w-3 h-3 lg:w-4 lg:h-4 text-red-600" />
       </Button>
     </div>
   );
