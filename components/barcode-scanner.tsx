@@ -33,6 +33,15 @@ export function BarcodeScanner({ isOpen, onClose, onScanSuccess }: BarcodeScanne
       setPermissionDenied(false)
       setIsScanning(true)
 
+      // Czekamy na następną ramkę, aby React zdążył wyrenderować element DOM
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      // Sprawdzamy czy element istnieje
+      const element = document.getElementById('barcode-reader')
+      if (!element) {
+        throw new Error('Element skanera nie został wyrenderowany')
+      }
+
       const scanner = new Html5Qrcode('barcode-reader')
       scannerRef.current = scanner
 
@@ -90,13 +99,23 @@ export function BarcodeScanner({ isOpen, onClose, onScanSuccess }: BarcodeScanne
   const stopScanner = async () => {
     try {
       if (scannerRef.current) {
-        await scannerRef.current.stop()
-        scannerRef.current.clear()
-        scannerRef.current = null
+        const scanner = scannerRef.current
+        scannerRef.current = null // Najpierw czyścimy referencję
+        
+        // Sprawdzamy czy skaner jest aktywny
+        if (scanner.getState() === 2) { // 2 = SCANNING
+          await scanner.stop()
+        }
+        
+        // Czyścimy zasoby
+        scanner.clear()
       }
       setIsScanning(false)
     } catch (err) {
       console.error('Error stopping scanner:', err)
+      // Mimo błędu, upewniamy się że stan jest czysty
+      setIsScanning(false)
+      scannerRef.current = null
     }
   }
 
