@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useSensor, useSensors, PointerSensor, useDroppable, useDraggable } from '@dnd-kit/core';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { CalendarDays, ChefHat, AlertCircle, Download, Search, Plus, Trash2, CheckCircle, XCircle } from 'lucide-react';
@@ -27,11 +28,13 @@ interface DraggableRecipe {
 }
 
 export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: MealPlanEditorProps) {
+  const router = useRouter();
   const [mealPlan, setMealPlan] = useState(initialMealPlan);
   const [selectedDay, setSelectedDay] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeRecipe, setActiveRecipe] = useState<DraggableRecipe | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -260,6 +263,27 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
     }
   };
 
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/meal-plans/${mealPlan.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete meal plan');
+      }
+
+      toast.success('Jadłospis został usunięty');
+      router.push('/menu/meal-plans');
+    } catch (error) {
+      console.error('Error deleting meal plan:', error);
+      toast.error('Błąd podczas usuwania jadłospisu');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -304,6 +328,36 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
                 <Download className="w-4 h-4" />
                 Eksport
               </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="destructive" 
+                    className="gap-2"
+                    disabled={isDeleting}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Usuń jadłospis
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Czy na pewno chcesz usunąć ten jadłospis?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Ta operacja jest nieodwracalna. Jadłospis &quot;{mealPlan.name}&quot; oraz wszystkie
+                      powiązane posiłki i receptury zostaną trwale usunięte.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Anuluj</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={handleDelete}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      {isDeleting ? 'Usuwanie...' : 'Usuń jadłospis'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         </CardHeader>
@@ -311,8 +365,8 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
 
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Recipe Library */}
-          <Card className="lg:col-span-1">
+          {/* Recipe Library - Sticky */}
+          <Card className="lg:col-span-1 sticky top-6 self-start">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <ChefHat className="w-5 h-5" />
@@ -329,7 +383,7 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <ScrollArea className="h-[600px]">
+              <ScrollArea className="h-[calc(100vh-220px)]">
                 <div className="p-4 space-y-4">
                   {/* Śniadanie */}
                   {groupedRecipes.BREAKFAST.length > 0 && (
