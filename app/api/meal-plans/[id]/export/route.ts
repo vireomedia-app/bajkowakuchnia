@@ -30,6 +30,7 @@ export async function GET(
                       },
                     },
                   },
+                  orderBy: { order: 'asc' },
                 },
               },
               orderBy: { order: 'asc' },
@@ -44,6 +45,14 @@ export async function GET(
       return NextResponse.json(
         { error: 'Jadłospis nie został znaleziony' },
         { status: 404 }
+      );
+    }
+
+    // Sprawdź czy jadłospis ma jakiekolwiek dni
+    if (!mealPlan.days || mealPlan.days.length === 0) {
+      return NextResponse.json(
+        { error: 'Jadłospis nie zawiera żadnych dni. Dodaj dni do jadłospisu przed eksportem.' },
+        { status: 400 }
       );
     }
 
@@ -92,17 +101,18 @@ export async function GET(
     let currentRow = 6;
     for (const day of mealPlan.days) {
       const row = summarySheet.getRow(currentRow);
-      row.getCell(1).value = DAY_OF_WEEK_LABELS[day.dayOfWeek];
+      row.getCell(1).value = DAY_OF_WEEK_LABELS[day.dayOfWeek] || `Dzień ${day.dayOfWeek}`;
       
       // Dla każdego typu posiłku
       const mealTypes = ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK', 'SECOND_SNACK'];
       mealTypes.forEach((mealType, index) => {
-        const meal = day.meals.find(m => m.mealType === mealType);
-        if (meal && meal.recipes.length > 0) {
+        const meal = day.meals?.find(m => m.mealType === mealType);
+        if (meal && meal.recipes && meal.recipes.length > 0) {
           const recipeNames = meal.recipes
             .map(mr => mr.recipe?.name || 'Brak nazwy')
+            .filter(name => name) // Usuń puste nazwy
             .join('\n');
-          row.getCell(index + 2).value = recipeNames;
+          row.getCell(index + 2).value = recipeNames || '-';
         } else {
           row.getCell(index + 2).value = '-';
         }
@@ -110,7 +120,7 @@ export async function GET(
       
       row.alignment = { vertical: 'top', wrapText: true };
       row.height = Math.max(40, Math.min(...mealTypes.map((mt, idx) => {
-        const meal = day.meals.find(m => m.mealType === mt);
+        const meal = day.meals?.find(m => m.mealType === mt);
         return meal?.recipes?.length || 0;
       })) * 15 + 10);
       
@@ -194,42 +204,48 @@ export async function GET(
     // Wypełnij wartości odżywcze dla każdego dnia
     let nutritionRow = 10;
     for (const day of mealPlan.days) {
-      const nutrition = calculateDailyNutrition(day);
-      const row = nutritionSheet.getRow(nutritionRow);
-      
-      row.getCell(1).value = DAY_OF_WEEK_LABELS[day.dayOfWeek];
-      row.getCell(2).value = Math.round(nutrition.calories);
-      row.getCell(3).value = parseFloat(nutrition.protein.toFixed(1));
-      
-      // Procent białka
-      const proteinPercent = nutrition.calories > 0 
-        ? (nutrition.protein * 4 / nutrition.calories * 100) 
-        : 0;
-      row.getCell(4).value = parseFloat(proteinPercent.toFixed(1));
-      
-      row.getCell(5).value = parseFloat(nutrition.fat.toFixed(1));
-      
-      // Procent tłuszczu
-      const fatPercent = nutrition.calories > 0 
-        ? (nutrition.fat * 9 / nutrition.calories * 100) 
-        : 0;
-      row.getCell(6).value = parseFloat(fatPercent.toFixed(1));
-      
-      row.getCell(7).value = parseFloat(nutrition.carbohydrates.toFixed(1));
-      
-      // Procent węglowodanów
-      const carbsPercent = nutrition.calories > 0 
-        ? (nutrition.carbohydrates * 4 / nutrition.calories * 100) 
-        : 0;
-      row.getCell(8).value = parseFloat(carbsPercent.toFixed(1));
-      
-      row.getCell(9).value = parseFloat(nutrition.calcium.toFixed(1));
-      row.getCell(10).value = parseFloat(nutrition.iron.toFixed(2));
-      row.getCell(11).value = parseFloat(nutrition.vitaminC.toFixed(1));
-      
-      row.alignment = { horizontal: 'center', vertical: 'middle' };
-      
-      nutritionRow++;
+      try {
+        const nutrition = calculateDailyNutrition(day);
+        const row = nutritionSheet.getRow(nutritionRow);
+        
+        row.getCell(1).value = DAY_OF_WEEK_LABELS[day.dayOfWeek] || `Dzień ${day.dayOfWeek}`;
+        row.getCell(2).value = Math.round(nutrition.calories || 0);
+        row.getCell(3).value = parseFloat((nutrition.protein || 0).toFixed(1));
+        
+        // Procent białka
+        const proteinPercent = nutrition.calories > 0 
+          ? (nutrition.protein * 4 / nutrition.calories * 100) 
+          : 0;
+        row.getCell(4).value = parseFloat(proteinPercent.toFixed(1));
+        
+        row.getCell(5).value = parseFloat((nutrition.fat || 0).toFixed(1));
+        
+        // Procent tłuszczu
+        const fatPercent = nutrition.calories > 0 
+          ? (nutrition.fat * 9 / nutrition.calories * 100) 
+          : 0;
+        row.getCell(6).value = parseFloat(fatPercent.toFixed(1));
+        
+        row.getCell(7).value = parseFloat((nutrition.carbohydrates || 0).toFixed(1));
+        
+        // Procent węglowodanów
+        const carbsPercent = nutrition.calories > 0 
+          ? (nutrition.carbohydrates * 4 / nutrition.calories * 100) 
+          : 0;
+        row.getCell(8).value = parseFloat(carbsPercent.toFixed(1));
+        
+        row.getCell(9).value = parseFloat((nutrition.calcium || 0).toFixed(1));
+        row.getCell(10).value = parseFloat((nutrition.iron || 0).toFixed(2));
+        row.getCell(11).value = parseFloat((nutrition.vitaminC || 0).toFixed(1));
+        
+        row.alignment = { horizontal: 'center', vertical: 'middle' };
+        
+        nutritionRow++;
+      } catch (dayError) {
+        console.error(`Error calculating nutrition for day ${day.dayOfWeek}:`, dayError);
+        // Pomiń ten dzień w przypadku błędu
+        continue;
+      }
     }
     
     // Zastosuj obramowanie
@@ -267,68 +283,85 @@ export async function GET(
     let detailsRow = 3;
     
     for (const day of mealPlan.days) {
-      // Nagłówek dnia
-      const dayRow = detailsSheet.getRow(detailsRow);
-      dayRow.getCell(1).value = DAY_OF_WEEK_LABELS[day.dayOfWeek];
-      dayRow.getCell(1).font = { bold: true, size: 14 };
-      dayRow.getCell(1).fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFE0E0E0' },
-      };
-      detailsSheet.mergeCells(`A${detailsRow}:F${detailsRow}`);
-      detailsRow++;
-      
-      // Nagłówki kolumn dla składników
-      const headerRow = detailsSheet.getRow(detailsRow);
-      headerRow.values = ['', 'Posiłek', 'Receptura', 'Składnik', 'Ilość', 'Jednostka'];
-      headerRow.font = { bold: true };
-      headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
-      headerRow.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFF0F0F0' },
-      };
-      detailsRow++;
-      
-      for (const meal of day.meals) {
-        if (meal.recipes.length === 0) continue;
+      try {
+        // Nagłówek dnia
+        const dayRow = detailsSheet.getRow(detailsRow);
+        dayRow.getCell(1).value = DAY_OF_WEEK_LABELS[day.dayOfWeek] || `Dzień ${day.dayOfWeek}`;
+        dayRow.getCell(1).font = { bold: true, size: 14 };
+        dayRow.getCell(1).fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFE0E0E0' },
+        };
+        detailsSheet.mergeCells(`A${detailsRow}:F${detailsRow}`);
+        detailsRow++;
         
-        for (const mealRecipe of meal.recipes) {
-          const recipe = mealRecipe.recipe;
-          if (!recipe) continue;
-          
-          // Wiersz z nazwą posiłku i receptury
-          const recipeRow = detailsSheet.getRow(detailsRow);
-          recipeRow.getCell(2).value = MEAL_TYPE_LABELS[meal.mealType];
-          recipeRow.getCell(3).value = recipe.name;
-          recipeRow.getCell(2).font = { bold: true };
-          recipeRow.getCell(3).font = { bold: true };
+        // Nagłówki kolumn dla składników
+        const headerRow = detailsSheet.getRow(detailsRow);
+        headerRow.values = ['', 'Posiłek', 'Receptura', 'Składnik', 'Ilość', 'Jednostka'];
+        headerRow.font = { bold: true };
+        headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
+        headerRow.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFF0F0F0' },
+        };
+        detailsRow++;
+        
+        // Sprawdź czy są posiłki
+        if (!day.meals || day.meals.length === 0) {
+          const noMealsRow = detailsSheet.getRow(detailsRow);
+          noMealsRow.getCell(2).value = 'Brak posiłków';
+          noMealsRow.getCell(2).font = { italic: true };
           detailsRow++;
+          detailsRow++; // Pusta linia
+          continue;
+        }
+        
+        for (const meal of day.meals) {
+          if (!meal.recipes || meal.recipes.length === 0) continue;
           
-          // Składniki receptury
-          if (recipe.ingredients && recipe.ingredients.length > 0) {
-            for (const ingredient of recipe.ingredients) {
-              const ingredientRow = detailsSheet.getRow(detailsRow);
-              ingredientRow.getCell(4).value = ingredient.product?.name || 'Nieznany składnik';
-              ingredientRow.getCell(5).value = ingredient.quantity;
-              ingredientRow.getCell(6).value = ingredient.unit;
+          for (const mealRecipe of meal.recipes) {
+            const recipe = mealRecipe.recipe;
+            if (!recipe) continue;
+            
+            // Wiersz z nazwą posiłku i receptury
+            const recipeRow = detailsSheet.getRow(detailsRow);
+            recipeRow.getCell(2).value = MEAL_TYPE_LABELS[meal.mealType] || meal.mealType;
+            recipeRow.getCell(3).value = recipe.name || 'Brak nazwy';
+            recipeRow.getCell(2).font = { bold: true };
+            recipeRow.getCell(3).font = { bold: true };
+            detailsRow++;
+            
+            // Składniki receptury
+            if (recipe.ingredients && recipe.ingredients.length > 0) {
+              for (const ingredient of recipe.ingredients) {
+                const ingredientRow = detailsSheet.getRow(detailsRow);
+                ingredientRow.getCell(4).value = ingredient.product?.name || 'Nieznany składnik';
+                ingredientRow.getCell(5).value = ingredient.quantity || 0;
+                ingredientRow.getCell(6).value = ingredient.unit || '';
+                detailsRow++;
+              }
+            } else {
+              const noIngredientsRow = detailsSheet.getRow(detailsRow);
+              noIngredientsRow.getCell(4).value = 'Brak składników';
+              noIngredientsRow.getCell(4).font = { italic: true };
               detailsRow++;
             }
-          } else {
-            const noIngredientsRow = detailsSheet.getRow(detailsRow);
-            noIngredientsRow.getCell(4).value = 'Brak składników';
-            noIngredientsRow.getCell(4).font = { italic: true };
+            
+            // Pusta linia między recepturami
             detailsRow++;
           }
-          
-          // Pusta linia między recepturami
-          detailsRow++;
         }
+        
+        // Pusta linia między dniami
+        detailsRow++;
+      } catch (dayError) {
+        console.error(`Error processing day ${day.dayOfWeek} details:`, dayError);
+        // Kontynuuj z następnym dniem
+        detailsRow++;
+        continue;
       }
-      
-      // Pusta linia między dniami
-      detailsRow++;
     }
     
     // Zastosuj obramowanie do wszystkich komórek z danymi
@@ -363,8 +396,15 @@ export async function GET(
     });
   } catch (error) {
     console.error('Error exporting meal plan:', error);
+    
+    // Bardziej szczegółowy komunikat błędu
+    const errorMessage = error instanceof Error ? error.message : 'Nieznany błąd';
+    
     return NextResponse.json(
-      { error: 'Błąd podczas eksportowania jadłospisu' },
+      { 
+        error: 'Błąd podczas eksportowania jadłospisu',
+        details: errorMessage
+      },
       { status: 500 }
     );
   }

@@ -102,16 +102,26 @@ export function calculateDailyNutrition(day: MealPlanDay): DailyNutrition {
     vitaminC: 0,
   };
 
+  // Zabezpieczenie przed brakiem posiłków
+  if (!day.meals || day.meals.length === 0) {
+    return nutrition;
+  }
+
   for (const meal of day.meals) {
+    // Zabezpieczenie przed brakiem receptur
+    if (!meal.recipes || meal.recipes.length === 0) continue;
+
     for (const mealPlanRecipe of meal.recipes) {
-      if (!mealPlanRecipe.recipe?.ingredients) continue;
+      // Zabezpieczenie przed brakiem receptury lub składników
+      if (!mealPlanRecipe.recipe) continue;
+      if (!mealPlanRecipe.recipe.ingredients || mealPlanRecipe.recipe.ingredients.length === 0) continue;
 
       const recipeNutrition = calculateRecipeNutrition(
         mealPlanRecipe.recipe.ingredients
       );
 
-      // Pomnóż przez liczbę porcji
-      const servings = mealPlanRecipe.servings;
+      // Pomnóż przez liczbę porcji (domyślnie 1 jeśli nie ma)
+      const servings = mealPlanRecipe.servings || 1;
 
       nutrition.calories += recipeNutrition.calories * servings;
       nutrition.protein += recipeNutrition.protein * servings;
