@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 
 export const dynamic = "force-dynamic"
+export const maxDuration = 300 // 5 minut timeout
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
       mealPlanRecipes = []
     } = importData.data
 
-    // UWAGA: To usunie WSZYSTKIE obecne dane!
+    // UWAGA: To usunie WSZYSTKIE obecne dane (poza użytkownikami)!
     // Usuwamy w odpowiedniej kolejności ze względu na foreign keys
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Usuń dane w odpowiedniej kolejności (najpierw zależne)
@@ -65,11 +66,18 @@ export async function POST(request: NextRequest) {
       await tx.transaction.deleteMany()
       await tx.product.deleteMany()
 
-      // Importuj produkty
+      // Mapy do konwersji starych ID na nowe
+      const productIdMap = new Map<string, string>()
+      const recipeIdMap = new Map<string, string>()
+      const standardsIdMap = new Map<string, string>()
+      const mealPlanIdMap = new Map<string, string>()
+      const mealPlanDayIdMap = new Map<string, string>()
+      const mealPlanMealIdMap = new Map<string, string>()
+
+      // Importuj produkty (bez wymuszania ID)
       for (const product of products) {
-        await tx.product.create({
+        const newProduct = await tx.product.create({
           data: {
-            id: product.id,
             name: product.name,
             unit: product.unit,
             currentStock: product.currentStock || 0,
@@ -89,14 +97,20 @@ export async function POST(request: NextRequest) {
             updatedAt: product.updatedAt ? new Date(product.updatedAt) : undefined
           }
         })
+        productIdMap.set(product.id, newProduct.id)
       }
 
-      // Importuj transakcje
+      // Importuj transakcje z nowymi ID produktów
       for (const transaction of transactions) {
+        const newProductId = productIdMap.get(transaction.productId)
+        if (!newProductId) {
+          console.warn(`Product ID ${transaction.productId} not found for transaction ${transaction.id}`)
+          continue
+        }
+
         await tx.transaction.create({
           data: {
-            id: transaction.id,
-            productId: transaction.productId,
+            productId: newProductId,
             date: new Date(transaction.date),
             document: transaction.document,
             type: transaction.type,
@@ -109,9 +123,8 @@ export async function POST(request: NextRequest) {
 
       // Importuj receptury
       for (const recipe of recipes) {
-        await tx.recipe.create({
+        const newRecipe = await tx.recipe.create({
           data: {
-            id: recipe.id,
             name: recipe.name,
             description: recipe.description,
             servings: recipe.servings || 1,
@@ -121,15 +134,24 @@ export async function POST(request: NextRequest) {
             updatedAt: recipe.updatedAt ? new Date(recipe.updatedAt) : undefined
           }
         })
+        recipeIdMap.set(recipe.id, newRecipe.id)
       }
 
-      // Importuj składniki receptur
+      // Importuj składniki receptur z nowymi ID
       for (const ingredient of recipeIngredients) {
+        const newRecipeId = recipeIdMap.get(ingredient.recipeId)
+        if (!newRecipeId) {
+          console.warn(`Recipe ID ${ingredient.recipeId} not found for ingredient ${ingredient.id}`)
+          continue
+        }
+
+        // productId może być null dla produktów niestandardowych
+        const newProductId = ingredient.productId ? productIdMap.get(ingredient.productId) : null
+
         await tx.recipeIngredient.create({
           data: {
-            id: ingredient.id,
-            recipeId: ingredient.recipeId,
-            productId: ingredient.productId,
+            recipeId: newRecipeId,
+            productId: newProductId,
             productName: ingredient.productName,
             quantity: ingredient.quantity,
             unit: ingredient.unit
@@ -139,9 +161,8 @@ export async function POST(request: NextRequest) {
 
       // Importuj normy żywieniowe
       for (const standard of nutritionalStandards) {
-        await tx.nutritionalStandards.create({
+        const newStandard = await tx.nutritionalStandards.create({
           data: {
-            id: standard.id,
             name: standard.name,
             energyMin: standard.energyMin,
             energyMax: standard.energyMax,
@@ -158,65 +179,91 @@ export async function POST(request: NextRequest) {
             updatedAt: standard.updatedAt ? new Date(standard.updatedAt) : undefined
           }
         })
+        standardsIdMap.set(standard.id, newStandard.id)
       }
 
       // Importuj jadłospisy
       for (const mealPlan of mealPlans) {
-        await tx.mealPlan.create({
+        // standardsId może być null
+        const newStandardsId = mealPlan.standardsId ? standardsIdMap.get(mealPlan.standardsId) : null
+
+        const newMealPlan = await tx.mealPlan.create({
           data: {
-            id: mealPlan.id,
             name: mealPlan.name,
             weekNumber: mealPlan.weekNumber,
             season: mealPlan.season,
             description: mealPlan.description,
-            standardsId: mealPlan.standardsId,
+            standardsId: newStandardsId,
             createdAt: mealPlan.createdAt ? new Date(mealPlan.createdAt) : undefined,
             updatedAt: mealPlan.updatedAt ? new Date(mealPlan.updatedAt) : undefined
           }
         })
+        mealPlanIdMap.set(mealPlan.id, newMealPlan.id)
       }
 
       // Importuj dni jadłospisów
       for (const day of mealPlanDays) {
-        await tx.mealPlanDay.create({
+        const newMealPlanId = mealPlanIdMap.get(day.mealPlanId)
+        if (!newMealPlanId) {
+          console.warn(`Meal plan ID ${day.mealPlanId} not found for day ${day.id}`)
+          continue
+        }
+
+        const newDay = await tx.mealPlanDay.create({
           data: {
-            id: day.id,
-            mealPlanId: day.mealPlanId,
+            mealPlanId: newMealPlanId,
             dayOfWeek: day.dayOfWeek,
             date: day.date ? new Date(day.date) : null,
             createdAt: day.createdAt ? new Date(day.createdAt) : undefined,
             updatedAt: day.updatedAt ? new Date(day.updatedAt) : undefined
           }
         })
+        mealPlanDayIdMap.set(day.id, newDay.id)
       }
 
       // Importuj posiłki w dniach
       for (const meal of mealPlanMeals) {
-        await tx.mealPlanMeal.create({
+        const newMealPlanDayId = mealPlanDayIdMap.get(meal.mealPlanDayId)
+        if (!newMealPlanDayId) {
+          console.warn(`Meal plan day ID ${meal.mealPlanDayId} not found for meal ${meal.id}`)
+          continue
+        }
+
+        const newMeal = await tx.mealPlanMeal.create({
           data: {
-            id: meal.id,
-            mealPlanDayId: meal.mealPlanDayId,
+            mealPlanDayId: newMealPlanDayId,
             mealType: meal.mealType,
             order: meal.order || 0,
             createdAt: meal.createdAt ? new Date(meal.createdAt) : undefined,
             updatedAt: meal.updatedAt ? new Date(meal.updatedAt) : undefined
           }
         })
+        mealPlanMealIdMap.set(meal.id, newMeal.id)
       }
 
       // Importuj receptury w posiłkach
       for (const mealRecipe of mealPlanRecipes) {
+        const newMealPlanMealId = mealPlanMealIdMap.get(mealRecipe.mealPlanMealId)
+        const newRecipeId = recipeIdMap.get(mealRecipe.recipeId)
+        
+        if (!newMealPlanMealId || !newRecipeId) {
+          console.warn(`Missing mapping for meal recipe ${mealRecipe.id}`)
+          continue
+        }
+
         await tx.mealPlanRecipe.create({
           data: {
-            id: mealRecipe.id,
-            mealPlanMealId: mealRecipe.mealPlanMealId,
-            recipeId: mealRecipe.recipeId,
+            mealPlanMealId: newMealPlanMealId,
+            recipeId: newRecipeId,
             servings: mealRecipe.servings || 1,
             order: mealRecipe.order || 0,
             createdAt: mealRecipe.createdAt ? new Date(mealRecipe.createdAt) : undefined
           }
         })
       }
+    }, {
+      timeout: 300000, // 5 minut
+      maxWait: 300000
     })
 
     return NextResponse.json({
