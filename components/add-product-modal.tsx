@@ -20,6 +20,7 @@ interface AddProductModalProps {
   isOpen: boolean
   onClose: () => void
   initialName?: string
+  initialData?: any
 }
 
 const UNIT_OPTIONS = [
@@ -32,7 +33,7 @@ const UNIT_OPTIONS = [
   { value: 'inne', label: 'inne' },
 ]
 
-export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProductModalProps) {
+export function AddProductModal({ isOpen, onClose, initialName = '', initialData }: AddProductModalProps) {
   const [formData, setFormData] = useState({
     name: initialName,
     unit: 'szt' as typeof UNITS[number],
@@ -61,6 +62,32 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
       setFormData(prev => ({ ...prev, name: initialName }))
     }
   }, [initialName])
+
+  // Update all data when initialData prop changes
+  useEffect(() => {
+    if (initialData) {
+      setFormData(prev => ({
+        ...prev,
+        name: initialData.name || prev.name,
+        manufacturer: initialData.manufacturer || prev.manufacturer,
+        calories: initialData.calories?.toString() || prev.calories,
+        salt: initialData.salt?.toString() || prev.salt,
+        protein: initialData.protein?.toString() || prev.protein,
+        fat: initialData.fat?.toString() || prev.fat,
+        saturatedFat: initialData.saturatedFat?.toString() || prev.saturatedFat,
+        carbohydrates: initialData.carbohydrates?.toString() || prev.carbohydrates,
+        sugars: initialData.sugars?.toString() || prev.sugars,
+        calcium: initialData.calcium?.toString() || prev.calcium,
+        iron: initialData.iron?.toString() || prev.iron,
+        vitaminC: initialData.vitaminC?.toString() || prev.vitaminC,
+        allergens: initialData.allergens?.length > 0 ? initialData.allergens : prev.allergens,
+      }))
+      
+      if (initialData.name) {
+        toast.success('Dane produktu zostały załadowane ze skanera. Sprawdź i dostosuj przed zapisaniem.')
+      }
+    }
+  }, [initialData])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -221,24 +248,22 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Package className="w-5 h-5 text-blue-600" />
-              <span>Dodaj nowy produkt</span>
-            </div>
+          <DialogTitle className="flex items-center space-x-2">
+            <Package className="w-5 h-5 text-blue-600" />
+            <span>Dodaj nowy produkt</span>
+          </DialogTitle>
+          <DialogDescription className="flex items-center justify-between">
+            <span>Wypełnij podstawowe informacje i wartości odżywcze produktu lub zeskanuj kod kreskowy.</span>
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => setIsScannerOpen(true)}
-              className="flex items-center space-x-2 border-blue-300 text-blue-700 hover:bg-blue-50"
+              className="flex items-center space-x-2 border-blue-300 text-blue-700 hover:bg-blue-50 ml-3 flex-shrink-0"
             >
-              <Camera className="w-4 h-4" />
-              <span className="hidden sm:inline">Skanuj kod</span>
+              <Camera className="w-5 h-5" />
+              <span className="hidden sm:inline">Skanuj</span>
             </Button>
-          </DialogTitle>
-          <DialogDescription>
-            Wypełnij podstawowe informacje i wartości odżywcze produktu lub zeskanuj kod kreskowy.
           </DialogDescription>
         </DialogHeader>
         

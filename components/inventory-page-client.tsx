@@ -23,6 +23,7 @@ export function InventoryPageClient({ products, searchQuery, addProductName }: I
   const router = useRouter()
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [initialProductName, setInitialProductName] = useState('')
+  const [scannedProductData, setScannedProductData] = useState<any>(null)
 
   // Auto-open modal when add_product parameter is present
   useEffect(() => {
@@ -37,9 +38,42 @@ export function InventoryPageClient({ products, searchQuery, addProductName }: I
     }
   }, [addProductName])
 
+  // Check for scanned product data from URL parameters
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const openAddProduct = params.get('openAddProduct')
+      const fromScanner = params.get('fromScanner')
+      
+      if (openAddProduct === 'true' && fromScanner === 'true') {
+        // Get scanned product data from sessionStorage
+        const scannedData = sessionStorage.getItem('scannedProduct')
+        if (scannedData) {
+          try {
+            const productData = JSON.parse(scannedData)
+            setScannedProductData(productData)
+            setIsAddModalOpen(true)
+            
+            // Clean up
+            sessionStorage.removeItem('scannedProduct')
+            
+            // Remove parameters from URL
+            const url = new URL(window.location.href)
+            url.searchParams.delete('openAddProduct')
+            url.searchParams.delete('fromScanner')
+            window.history.replaceState({}, '', url.toString())
+          } catch (error) {
+            console.error('Error parsing scanned product data:', error)
+          }
+        }
+      }
+    }
+  }, [])
+
   const handleCloseModal = () => {
     setIsAddModalOpen(false)
     setInitialProductName('')
+    setScannedProductData(null)
   }
 
   return (
@@ -141,6 +175,7 @@ export function InventoryPageClient({ products, searchQuery, addProductName }: I
         isOpen={isAddModalOpen} 
         onClose={handleCloseModal}
         initialName={initialProductName}
+        initialData={scannedProductData}
       />
     </div>
   )
