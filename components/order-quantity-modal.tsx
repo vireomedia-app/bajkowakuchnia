@@ -67,7 +67,7 @@ export function OrderQuantityModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Package className="w-5 h-5 text-green-600" />
@@ -78,7 +78,7 @@ export function OrderQuantityModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-6 overflow-y-auto flex-1">
           {/* Informacje o produkcie */}
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
             <div className="space-y-2">

@@ -115,19 +115,19 @@ export function InventoryPageClient({ products, searchQuery, addProductName }: I
       </div>
 
       {/* Actions */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
+      <div className="flex flex-col sm:flex-row gap-4 justify-between items-stretch sm:items-center">
         <SearchProducts />
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <Button 
             onClick={() => setIsScannerOpen(true)} 
-            className="gap-2 bg-purple-600 hover:bg-purple-700"
+            className="gap-2 bg-purple-600 hover:bg-purple-700 whitespace-nowrap order-1 sm:order-1"
           >
             <Camera className="w-4 h-4" />
             Skanuj nowe produkty
           </Button>
           <Button 
             onClick={() => setIsAddModalOpen(true)} 
-            className="gap-2 bg-blue-600 hover:bg-blue-700"
+            className="gap-2 bg-blue-600 hover:bg-blue-700 whitespace-nowrap order-2 sm:order-2"
           >
             <Plus className="w-4 h-4" />
             Dodaj ręcznie nowy produkt

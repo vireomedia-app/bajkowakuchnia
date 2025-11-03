@@ -129,7 +129,7 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
   return (
     <>
       <Dialog open={isOpen && !showScanner && !showQuantityModal} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
               <PackagePlus className="w-5 h-5 text-green-600" />
@@ -137,7 +137,7 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-6">
+          <div className="space-y-6 overflow-y-auto flex-1">
             {/* Podsumowanie */}
             {scannedProducts.length > 0 && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">

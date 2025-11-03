@@ -129,7 +129,20 @@ export function BarcodeScanner({ isOpen, onClose, onScanSuccess }: BarcodeScanne
       const response = await fetch(`/api/products/barcode?code=${barcode}`)
       
       if (!response.ok) {
-        throw new Error('Produkt nie został znaleziony w bazie Open Food Facts')
+        const errorData = await response.json()
+        
+        // Jeśli produkt już istnieje w bazie (409)
+        if (response.status === 409 && errorData.existingProduct) {
+          toast.error(
+            `${errorData.error}\n\nProdukt: ${errorData.existingProduct.name}\nJednostka: ${errorData.existingProduct.unit}\nStan: ${errorData.existingProduct.currentStock}`,
+            { id: 'barcode-search', duration: 5000 }
+          )
+          setError(`Produkt "${errorData.existingProduct.name}" jest już w bazie danych`)
+          setIsLoading(false)
+          return
+        }
+        
+        throw new Error(errorData.error || 'Produkt nie został znaleziony w bazie Open Food Facts')
       }
 
       const productData = await response.json()
@@ -161,7 +174,7 @@ export function BarcodeScanner({ isOpen, onClose, onScanSuccess }: BarcodeScanne
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Camera className="w-5 h-5 text-blue-600" />
@@ -172,7 +185,7 @@ export function BarcodeScanner({ isOpen, onClose, onScanSuccess }: BarcodeScanne
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 overflow-y-auto flex-1">
           {!isScanning && !isLoading && (
             <div className="text-center py-8">
               <Camera className="w-16 h-16 mx-auto mb-4 text-gray-400" />

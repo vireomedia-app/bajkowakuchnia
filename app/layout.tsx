@@ -59,10 +59,17 @@ export default function RootLayout({
           </div>
         </footer>
         <Toaster
-          position="top-right"
-          expand={false}
+          position="top-center"
+          expand={true}
           richColors
           closeButton
+          toastOptions={{
+            style: {
+              maxWidth: '90vw',
+              width: 'auto',
+            },
+          }}
+          visibleToasts={3}
         />
       </body>
     </html>
