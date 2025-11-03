@@ -51,39 +51,16 @@ export async function POST(request: NextRequest) {
     // Validate input
     const validatedData = createProductSchema.parse(body)
     
-    // Check for duplicate barcode BEFORE creating product
-    if (validatedData.barcode && validatedData.barcode.trim()) {
-      const existingProduct = await prisma.product.findFirst({
-        where: { barcode: validatedData.barcode.trim() }
-      })
-      
-      if (existingProduct) {
-        return NextResponse.json(
-          { 
-            error: `Produkt z kodem kreskowym "${validatedData.barcode}" już istnieje w bazie`,
-            existingProduct: {
-              id: existingProduct.id,
-              name: existingProduct.name,
-              unit: existingProduct.unit,
-              currentStock: existingProduct.currentStock,
-              barcode: existingProduct.barcode
-            }
-          },
-          { status: 409 }
-        )
-      }
-    }
-    
     // Create backup before making changes
     await createBackup('Przed dodaniem produktu')
     await cleanupOldBackups(50)
     
-    // Create product
+    // Create product - database will handle duplicate barcode via UNIQUE constraint
     const product = await createProduct(validatedData)
     
     return NextResponse.json(product, { status: 201 })
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating product:', error)
     
     if (error instanceof z.ZodError) {
@@ -91,6 +68,23 @@ export async function POST(request: NextRequest) {
         { error: 'Nieprawidłowe dane', details: error.errors },
         { status: 400 }
       )
+    }
+    
+    // Handle Prisma unique constraint violations (P2002)
+    if (error.code === 'P2002') {
+      const target = error.meta?.target || []
+      if (target.includes('barcode')) {
+        return NextResponse.json(
+          { error: 'Produkt z tym kodem kreskowym już istnieje w bazie' },
+          { status: 409 }
+        )
+      }
+      if (target.includes('name')) {
+        return NextResponse.json(
+          { error: 'Produkt o tej nazwie już istnieje' },
+          { status: 409 }
+        )
+      }
     }
     
     if (error instanceof Error && error.message.includes('Unique constraint')) {
