@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ProductsList } from '@/components/products-list'
 import { AddProductModal } from '@/components/add-product-modal'
+import { BarcodeScanner } from '@/components/barcode-scanner'
 import { ExportButton } from '@/components/export-button'
 import { SearchProducts } from '@/components/search-products'
 import { BackupManager } from '@/components/backup-manager'
@@ -22,6 +23,7 @@ interface InventoryPageClientProps {
 export function InventoryPageClient({ products, searchQuery, addProductName }: InventoryPageClientProps) {
   const router = useRouter()
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isScannerOpen, setIsScannerOpen] = useState(false)
   const [initialProductName, setInitialProductName] = useState('')
   const [scannedProductData, setScannedProductData] = useState<any>(null)
 
@@ -74,6 +76,16 @@ export function InventoryPageClient({ products, searchQuery, addProductName }: I
     setIsAddModalOpen(false)
     setInitialProductName('')
     setScannedProductData(null)
+  }
+  
+  const handleScanSuccess = (productData: any) => {
+    setScannedProductData(productData)
+    setIsAddModalOpen(true)
+  }
+  
+  const handleScanNext = () => {
+    // Uruchom skaner ponownie
+    setIsScannerOpen(true)
   }
 
   return (
@@ -176,6 +188,14 @@ export function InventoryPageClient({ products, searchQuery, addProductName }: I
         onClose={handleCloseModal}
         initialName={initialProductName}
         initialData={scannedProductData}
+        onScanNext={handleScanNext}
+      />
+      
+      {/* Barcode Scanner */}
+      <BarcodeScanner
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScanSuccess={handleScanSuccess}
       />
     </div>
   )

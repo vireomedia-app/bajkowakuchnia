@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createProduct, getProducts } from '@/lib/db-utils'
 import { createBackup, cleanupOldBackups } from '@/lib/backup-utils'
+import { prisma } from '@/lib/db'
 import { z } from 'zod'
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,7 @@ const createProductSchema = z.object({
   name: z.string().min(1, 'Nazwa produktu jest wymagana'),
   unit: z.string().min(1, 'Jednostka miary jest wymagana'),
   initialStock: z.number().min(0, 'Stan początkowy nie może być ujemny'),
+  barcode: z.string().nullable().optional(),
   manufacturer: z.string().nullable().optional(),
   calories: z.number().nullable().optional(),
   salt: z.number().nullable().optional(),
@@ -48,6 +50,28 @@ export async function POST(request: NextRequest) {
     
     // Validate input
     const validatedData = createProductSchema.parse(body)
+    
+    // Sprawdź czy produkt z tym kodem kreskowym już istnieje
+    if (validatedData.barcode) {
+      const existingProduct = await prisma.product.findUnique({
+        where: { barcode: validatedData.barcode }
+      })
+      
+      if (existingProduct) {
+        return NextResponse.json(
+          { 
+            error: 'Produkt z tym kodem kreskowym już istnieje w bazie',
+            existingProduct: {
+              id: existingProduct.id,
+              name: existingProduct.name,
+              unit: existingProduct.unit,
+              currentStock: existingProduct.currentStock
+            }
+          },
+          { status: 409 }
+        )
+      }
+    }
     
     // Create backup before making changes
     await createBackup('Przed dodaniem produktu')

@@ -100,6 +100,7 @@ export async function GET(request: NextRequest) {
     // Zmapuj dane z Open Food Facts do naszego formatu
     const productData = {
       name: product.product_name_pl || product.product_name || '',
+      barcode: barcode, // Przekaż kod kreskowy
       manufacturer: product.brands || '',
       calories: product.nutriments?.['energy-kcal_100g'] || null,
       salt: product.nutriments?.salt_100g || null,
