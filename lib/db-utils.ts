@@ -40,6 +40,7 @@ export async function createProduct(data: {
   name: string
   unit: string
   initialStock: number
+  barcode?: string | null
   manufacturer?: string | null
   calories?: number | null
   salt?: number | null
@@ -51,8 +52,16 @@ export async function createProduct(data: {
   calcium?: number | null
   iron?: number | null
   vitaminC?: number | null
+  allergens?: number[]
 }) {
   try {
+    // Clean barcode: ensure empty strings become null
+    let cleanBarcode = data.barcode
+    if (cleanBarcode !== null && cleanBarcode !== undefined) {
+      const trimmed = cleanBarcode.trim()
+      cleanBarcode = trimmed === '' ? null : trimmed
+    }
+    
     return await prisma.$transaction(async (tx) => {
       // Create product
       const product = await tx.product.create({
@@ -60,6 +69,7 @@ export async function createProduct(data: {
           name: data.name,
           unit: data.unit,
           currentStock: data.initialStock,
+          barcode: cleanBarcode,
           manufacturer: data.manufacturer,
           calories: data.calories,
           salt: data.salt,
@@ -71,6 +81,7 @@ export async function createProduct(data: {
           calcium: data.calcium,
           iron: data.iron,
           vitaminC: data.vitaminC,
+          allergens: data.allergens || [],
         }
       })
       
