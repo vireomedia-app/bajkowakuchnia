@@ -9,7 +9,7 @@ import { ExportButton } from '@/components/export-button'
 import { SearchProducts } from '@/components/search-products'
 import { BackupManager } from '@/components/backup-manager'
 import { LogoutButton } from '@/components/logout-button'
-import { Warehouse, Package, ArrowLeft, Plus } from 'lucide-react'
+import { Warehouse, Package, ArrowLeft, Plus, Camera } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Product } from '@/lib/types'
@@ -119,11 +119,18 @@ export function InventoryPageClient({ products, searchQuery, addProductName }: I
         <SearchProducts />
         <div className="flex gap-3">
           <Button 
+            onClick={() => setIsScannerOpen(true)} 
+            className="gap-2 bg-purple-600 hover:bg-purple-700"
+          >
+            <Camera className="w-4 h-4" />
+            Skanuj nowe produkty
+          </Button>
+          <Button 
             onClick={() => setIsAddModalOpen(true)} 
             className="gap-2 bg-blue-600 hover:bg-blue-700"
           >
             <Plus className="w-4 h-4" />
-            Dodaj nowy produkt
+            Dodaj ręcznie nowy produkt
           </Button>
         </div>
       </div>
