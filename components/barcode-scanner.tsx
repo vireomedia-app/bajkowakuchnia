@@ -12,9 +12,10 @@ interface BarcodeScannerProps {
   isOpen: boolean
   onClose: () => void
   onScanSuccess: (productData: any) => void
+  mode?: 'add_product' | 'receive_order' // Tryb działania skanera
 }
 
-export function BarcodeScanner({ isOpen, onClose, onScanSuccess }: BarcodeScannerProps) {
+export function BarcodeScanner({ isOpen, onClose, onScanSuccess, mode = 'add_product' }: BarcodeScannerProps) {
   const [isScanning, setIsScanning] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -152,12 +153,20 @@ export function BarcodeScanner({ isOpen, onClose, onScanSuccess }: BarcodeScanne
         
         // Jeśli produkt już istnieje w bazie (409)
         if (response.status === 409 && errorData.existingProduct) {
-          toast.error(
-            `${errorData.error}\n\nProdukt: ${errorData.existingProduct.name}\nJednostka: ${errorData.existingProduct.unit}\nStan: ${errorData.existingProduct.currentStock}`,
-            { id: 'barcode-search', duration: 5000 }
-          )
-          setError(`Produkt "${errorData.existingProduct.name}" jest już w bazie danych`)
-          setIsLoading(false)
+          if (mode === 'receive_order') {
+            // W trybie przyjmowania zamówienia - produkt istniejący to sukces!
+            toast.success('Produkt znaleziony w bazie!', { id: 'barcode-search' })
+            onScanSuccess(errorData.existingProduct)
+            onClose()
+          } else {
+            // W trybie dodawania produktu - produkt istniejący to błąd
+            toast.error(
+              `${errorData.error}\n\nProdukt: ${errorData.existingProduct.name}\nJednostka: ${errorData.existingProduct.unit}\nStan: ${errorData.existingProduct.currentStock}`,
+              { id: 'barcode-search', duration: 5000 }
+            )
+            setError(`Produkt "${errorData.existingProduct.name}" jest już w bazie danych`)
+            setIsLoading(false)
+          }
           return
         }
         
@@ -166,10 +175,17 @@ export function BarcodeScanner({ isOpen, onClose, onScanSuccess }: BarcodeScanne
 
       const productData = await response.json()
       
-      toast.success('Produkt znaleziony!', { id: 'barcode-search' })
-      
-      onScanSuccess(productData)
-      onClose()
+      if (mode === 'receive_order') {
+        // W trybie przyjmowania zamówienia - nowy produkt to błąd
+        toast.error('Ten produkt nie jest jeszcze w bazie. Najpierw dodaj go do inwentarza.', { id: 'barcode-search', duration: 5000 })
+        setError('Produkt nie jest w bazie')
+        setIsLoading(false)
+      } else {
+        // W trybie dodawania produktu - nowy produkt to sukces
+        toast.success('Produkt znaleziony!', { id: 'barcode-search' })
+        onScanSuccess(productData)
+        onClose()
+      }
       
     } catch (err: any) {
       console.error('Error fetching product data:', err)

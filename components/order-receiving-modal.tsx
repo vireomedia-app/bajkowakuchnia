@@ -30,29 +30,11 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
   const [isProcessing, setIsProcessing] = useState(false)
 
   const handleScanSuccess = async (productData: any) => {
-    // Sprawdź czy produkt już istnieje w bazie
-    try {
-      const response = await fetch(`/api/products/barcode?code=${productData.barcode}`)
-      
-      if (response.status === 409) {
-        // Produkt istnieje - pobierz jego dane
-        const data = await response.json()
-        setCurrentProduct(data.existingProduct)
-        setShowScanner(false)
-        setShowQuantityModal(true)
-      } else if (response.ok) {
-        // Nowy produkt z Open Food Facts
-        toast.error('Ten produkt nie istnieje jeszcze w bazie. Najpierw dodaj go do inwentarza.')
-        setShowScanner(false)
-      } else {
-        toast.error('Nie znaleziono produktu')
-        setShowScanner(false)
-      }
-    } catch (err: any) {
-      console.error('Error checking product:', err)
-      toast.error('Błąd podczas sprawdzania produktu')
-      setShowScanner(false)
-    }
+    // BarcodeScanner w trybie receive_order przekazuje tylko istniejące produkty
+    // więc możemy od razu pokazać modal ilości
+    setCurrentProduct(productData)
+    setShowScanner(false)
+    setShowQuantityModal(true)
   }
 
   const handleQuantitySubmit = async (quantity: number, unit: string) => {
@@ -230,6 +212,7 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
         isOpen={showScanner}
         onClose={() => setShowScanner(false)}
         onScanSuccess={handleScanSuccess}
+        mode="receive_order"
       />
 
       {/* Quantity Input Modal */}
