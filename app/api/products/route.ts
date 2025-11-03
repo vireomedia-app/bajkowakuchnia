@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     
     // Sprawdź czy produkt z tym kodem kreskowym już istnieje
     if (validatedData.barcode) {
-      const existingProduct = await prisma.product.findUnique({
+      const existingProduct = await prisma.product.findFirst({
         where: { barcode: validatedData.barcode }
       })
       
