@@ -53,11 +53,11 @@ export async function POST(request: NextRequest) {
     
     // Check for duplicate barcode BEFORE creating (extra safety layer)
     if (validatedData.barcode && validatedData.barcode.trim()) {
-	const existingByBarcode = await prisma.product.findFirst({
- 	 where: { 
- 	   barcode: validatedData.barcode.trim() 
- 	 } as any // ← To omija błąd TypeScript
-	})
+      const existingByBarcode = await prisma.product.findFirst({
+        where: { 
+          barcode: validatedData.barcode.trim() 
+        }
+      })
       
       if (existingByBarcode) {
         return NextResponse.json(
@@ -78,6 +78,9 @@ export async function POST(request: NextRequest) {
     
   } catch (error: any) {
     console.error('Error creating product:', error)
+    console.error('Error code:', error.code)
+    console.error('Error meta:', error.meta)
+    console.error('Error message:', error.message)
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -111,7 +114,10 @@ export async function POST(request: NextRequest) {
     }
     
     return NextResponse.json(
-      { error: 'Błąd serwera podczas tworzenia produktu' },
+      { 
+        error: 'Błąd serwera podczas tworzenia produktu',
+        details: error.message || 'Nieznany błąd'
+      },
       { status: 500 }
     )
   }

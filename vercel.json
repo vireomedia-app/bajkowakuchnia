@@ -1,5 +1,5 @@
 
 {
-  "buildCommand": "yarn build",
+  "buildCommand": "npx prisma migrate deploy && npx prisma generate && yarn build",
   "installCommand": "yarn install"
 }
