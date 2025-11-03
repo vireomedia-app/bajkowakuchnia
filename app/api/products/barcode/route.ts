@@ -1,5 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
@@ -61,7 +62,7 @@ function mapAllergens(allergenTags?: string[]): number[] {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const barcode = searchParams.get('code')
+    let barcode = searchParams.get('code')
 
     if (!barcode) {
       return NextResponse.json(
@@ -70,9 +71,55 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    console.log('Wyszukiwanie produktu:', barcode)
+    // Wyczyść kod kreskowy (usuń spacje, konwertuj pusty string na null)
+    barcode = barcode.trim()
+    if (barcode === '') {
+      return NextResponse.json(
+        { error: 'Kod kreskowy nie może być pusty' },
+        { status: 400 }
+      )
+    }
 
-    // Wywołaj API Open Food Facts
+    console.log('Wyszukiwanie produktu o kodzie:', barcode)
+
+    // NAJPIERW sprawdź czy produkt z tym kodem już istnieje w bazie
+    // Używamy tego samego zapytania co w POST /api/products dla spójności
+    const existingProducts = await prisma.$queryRaw<Array<{
+      id: string
+      name: string
+      unit: string
+      currentStock: number
+      barcode: string | null
+    }>>`
+      SELECT id, name, unit, "currentStock", barcode 
+      FROM "products" 
+      WHERE barcode = ${barcode}
+      LIMIT 1
+    `
+
+    console.log('Wynik wyszukiwania w bazie:', existingProducts)
+
+    if (existingProducts && existingProducts.length > 0) {
+      const existingProduct = existingProducts[0]
+      console.log('Znaleziono produkt w bazie:', existingProduct)
+      return NextResponse.json(
+        { 
+          error: 'Produkt z tym kodem kreskowym już istnieje w bazie',
+          existingProduct: {
+            id: existingProduct.id,
+            name: existingProduct.name,
+            unit: existingProduct.unit,
+            currentStock: existingProduct.currentStock,
+            barcode: existingProduct.barcode
+          }
+        },
+        { status: 409 }
+      )
+    }
+
+    console.log('Produkt nie znaleziony w bazie lokalnej, szukam w Open Food Facts...')
+
+    // Jeśli nie ma w bazie, wywołaj API Open Food Facts
     const response = await fetch(
       `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
       {

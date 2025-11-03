@@ -181,14 +181,14 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
             )}
 
             {/* Przyciski */}
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col gap-3">
               <Button
                 onClick={handleStartScanning}
-                className="flex-1 bg-green-600 hover:bg-green-700"
+                className="w-full bg-green-600 hover:bg-green-700 text-lg py-6"
                 size="lg"
               >
-                <Barcode className="w-5 h-5 mr-2" />
-                <span className="truncate">
+                <Barcode className="w-6 h-6 mr-2" />
+                <span className="font-semibold">
                   {scannedProducts.length === 0 ? 'Rozpocznij skanowanie' : 'Skanuj kolejny produkt'}
                 </span>
               </Button>
@@ -196,10 +196,10 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
               <Button
                 onClick={handleClose}
                 variant="outline"
-                size="lg"
-                className="sm:w-auto w-full"
+                size="default"
+                className="w-full"
               >
-                <X className="w-5 h-5 mr-2" />
+                <X className="w-4 h-4 mr-2" />
                 {scannedProducts.length === 0 ? 'Anuluj' : 'Zakończ'}
               </Button>
             </div>
