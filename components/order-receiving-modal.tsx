@@ -199,21 +199,23 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
             )}
 
             {/* Przyciski */}
-            <div className="flex space-x-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <Button
                 onClick={handleStartScanning}
                 className="flex-1 bg-green-600 hover:bg-green-700"
                 size="lg"
               >
                 <Barcode className="w-5 h-5 mr-2" />
-                {scannedProducts.length === 0 ? 'Rozpocznij skanowanie' : 'Skanuj kolejny produkt'}
+                <span className="truncate">
+                  {scannedProducts.length === 0 ? 'Rozpocznij skanowanie' : 'Skanuj kolejny produkt'}
+                </span>
               </Button>
 
               <Button
                 onClick={handleClose}
                 variant="outline"
                 size="lg"
-                className="px-6"
+                className="sm:w-auto w-full"
               >
                 <X className="w-5 h-5 mr-2" />
                 {scannedProducts.length === 0 ? 'Anuluj' : 'Zakończ'}

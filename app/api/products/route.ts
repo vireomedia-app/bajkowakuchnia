@@ -51,11 +51,27 @@ export async function POST(request: NextRequest) {
     // Validate input
     const validatedData = createProductSchema.parse(body)
     
+    // Check for duplicate barcode BEFORE creating (extra safety layer)
+    if (validatedData.barcode && validatedData.barcode.trim()) {
+      const existingByBarcode = await prisma.product.findFirst({
+        where: { 
+          barcode: validatedData.barcode.trim() 
+        }
+      })
+      
+      if (existingByBarcode) {
+        return NextResponse.json(
+          { error: `Produkt z kodem kreskowym "${validatedData.barcode}" już istnieje w bazie: "${existingByBarcode.name}"` },
+          { status: 409 }
+        )
+      }
+    }
+    
     // Create backup before making changes
     await createBackup('Przed dodaniem produktu')
     await cleanupOldBackups(50)
     
-    // Create product - database will handle duplicate barcode via UNIQUE constraint
+    // Create product - database will also handle duplicate barcode via UNIQUE constraint
     const product = await createProduct(validatedData)
     
     return NextResponse.json(product, { status: 201 })

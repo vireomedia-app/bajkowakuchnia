@@ -20,8 +20,27 @@ export function BarcodeScanner({ isOpen, onClose, onScanSuccess }: BarcodeScanne
   const [error, setError] = useState<string | null>(null)
   const [permissionDenied, setPermissionDenied] = useState(false)
   const scannerRef = useRef<Html5Qrcode | null>(null)
+  const hasAutoStarted = useRef(false)
 
+  // Auto-start scanner when modal opens
   useEffect(() => {
+    if (isOpen && !hasAutoStarted.current) {
+      hasAutoStarted.current = true
+      // Małe opóźnienie aby DOM zdążył się wyrenderować
+      const timer = setTimeout(() => {
+        startScanner()
+      }, 300)
+      return () => clearTimeout(timer)
+    }
+  }, [isOpen])
+
+  // Cleanup when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      hasAutoStarted.current = false
+      stopScanner()
+    }
+    
     return () => {
       stopScanner()
     }
