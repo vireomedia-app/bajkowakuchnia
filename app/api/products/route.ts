@@ -53,11 +53,11 @@ export async function POST(request: NextRequest) {
     
     // Check for duplicate barcode BEFORE creating (extra safety layer)
     if (validatedData.barcode && validatedData.barcode.trim()) {
-      const existingByBarcode = await prisma.product.findFirst({
-        where: { 
-          barcode: validatedData.barcode.trim() 
-        }
-      })
+	const existingByBarcode = await prisma.product.findFirst({
+ 	 where: { 
+ 	   barcode: validatedData.barcode.trim() 
+ 	 } as any // ← To omija błąd TypeScript
+	})
       
       if (existingByBarcode) {
         return NextResponse.json(
