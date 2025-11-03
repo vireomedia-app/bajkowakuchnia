@@ -1,5 +1,5 @@
 
 {
-  "buildCommand": "npx prisma db push --accept-data-loss && npx prisma generate && yarn build",
+  "buildCommand": "rm -rf node_modules/.prisma && rm -rf .next && npx prisma db push --accept-data-loss && npx prisma generate && yarn build",
   "installCommand": "yarn install"
 }
