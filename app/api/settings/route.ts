@@ -28,10 +28,10 @@ export async function GET(request: NextRequest) {
       // Utwórz domyślne ustawienia
       settings = await prisma.appSettings.create({
         data: {
-          enabledMeals: ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as const,
-          includeInCalories: ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as const,
-          exportForParents: ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as const,
-          exportForSanepid: ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as const,
+          enabledMeals: ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as any,
+          includeInCalories: ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as any,
+          exportForParents: ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as any,
+          exportForSanepid: ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as any,
           customMeals: []
         }
       })
@@ -90,10 +90,10 @@ export async function PATCH(request: NextRequest) {
       // Utwórz nowe ustawienia
       settings = await prisma.appSettings.create({
         data: {
-          enabledMeals: updateData.enabledMeals || (['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as const),
-          includeInCalories: updateData.includeInCalories || (['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as const),
-          exportForParents: updateData.exportForParents || (['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as const),
-          exportForSanepid: updateData.exportForSanepid || (['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as const),
+          enabledMeals: updateData.enabledMeals || (['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as any),
+          includeInCalories: updateData.includeInCalories || (['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as any),
+          exportForParents: updateData.exportForParents || (['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as any),
+          exportForSanepid: updateData.exportForSanepid || (['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as any),
           customMeals: updateData.customMeals || []
         }
       })
