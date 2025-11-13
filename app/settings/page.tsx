@@ -7,9 +7,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, Settings as SettingsIcon, Save } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { ArrowLeft, Settings as SettingsIcon, Save, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 type MealType = 'BREAKFAST' | 'SECOND_BREAKFAST' | 'LUNCH' | 'FIRST_SNACK' | 'SECOND_SNACK' | 'DINNER' | 'OTHER'
 
@@ -17,22 +26,41 @@ interface MealOption {
   type: MealType
   label: string
   description: string
+  isCustom?: boolean
 }
 
-const MEAL_OPTIONS: MealOption[] = [
+interface MealSettings {
+  includeInCalories: MealType[]
+  exportForParents: MealType[]
+  exportForSanepid: MealType[]
+  customMeals: Array<{
+    id: string
+    label: string
+    description: string
+  }>
+}
+
+const DEFAULT_MEAL_OPTIONS: MealOption[] = [
   { type: 'BREAKFAST', label: 'Śniadanie', description: 'Pierwszy posiłek dnia' },
   { type: 'SECOND_BREAKFAST', label: 'Drugie śniadanie', description: 'Posiłek przedpołudniowy' },
   { type: 'LUNCH', label: 'Obiad', description: 'Główny posiłek dnia' },
   { type: 'FIRST_SNACK', label: 'Podwieczorek I', description: 'Pierwszy posiłek popołudniowy' },
   { type: 'SECOND_SNACK', label: 'Podwieczorek II', description: 'Drugi posiłek popołudniowy' },
-  { type: 'DINNER', label: 'Kolacja', description: 'Ostatni posiłek dnia' },
 ]
 
 export default function SettingsPage() {
   const router = useRouter()
-  const [enabledMeals, setEnabledMeals] = useState<MealType[]>([])
+  const [settings, setSettings] = useState<MealSettings>({
+    includeInCalories: [],
+    exportForParents: [],
+    exportForSanepid: [],
+    customMeals: []
+  })
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [showAddMealDialog, setShowAddMealDialog] = useState(false)
+  const [newMealLabel, setNewMealLabel] = useState('')
+  const [newMealDescription, setNewMealDescription] = useState('')
 
   useEffect(() => {
     fetchSettings()
@@ -45,7 +73,12 @@ export default function SettingsPage() {
         throw new Error('Nie udało się pobrać ustawień')
       }
       const data = await response.json()
-      setEnabledMeals(data.enabledMeals || [])
+      setSettings({
+        includeInCalories: data.includeInCalories || [],
+        exportForParents: data.exportForParents || [],
+        exportForSanepid: data.exportForSanepid || [],
+        customMeals: data.customMeals || []
+      })
     } catch (error) {
       console.error('Error fetching settings:', error)
       toast.error('Błąd podczas pobierania ustawień')
@@ -54,22 +87,55 @@ export default function SettingsPage() {
     }
   }
 
-  const handleToggleMeal = (mealType: MealType) => {
-    setEnabledMeals(prev => {
-      if (prev.includes(mealType)) {
-        return prev.filter(m => m !== mealType)
+  const handleToggleSetting = (mealType: MealType, settingType: keyof Omit<MealSettings, 'customMeals'>) => {
+    setSettings(prev => {
+      const currentArray = prev[settingType]
+      if (currentArray.includes(mealType)) {
+        return {
+          ...prev,
+          [settingType]: currentArray.filter(m => m !== mealType)
+        }
       } else {
-        return [...prev, mealType]
+        return {
+          ...prev,
+          [settingType]: [...currentArray, mealType]
+        }
       }
     })
   }
 
-  const handleSave = async () => {
-    if (enabledMeals.length === 0) {
-      toast.error('Musisz wybrać przynajmniej jeden posiłek')
+  const handleAddCustomMeal = () => {
+    if (!newMealLabel.trim()) {
+      toast.error('Podaj nazwę posiłku')
       return
     }
 
+    const newMeal = {
+      id: `custom_${Date.now()}`,
+      label: newMealLabel.trim(),
+      description: newMealDescription.trim() || 'Własny posiłek'
+    }
+
+    setSettings(prev => ({
+      ...prev,
+      customMeals: [...prev.customMeals, newMeal]
+    }))
+
+    setNewMealLabel('')
+    setNewMealDescription('')
+    setShowAddMealDialog(false)
+    toast.success('Dodano nowy posiłek')
+  }
+
+  const handleRemoveCustomMeal = (mealId: string) => {
+    setSettings(prev => ({
+      ...prev,
+      customMeals: prev.customMeals.filter(m => m.id !== mealId)
+    }))
+    toast.success('Usunięto posiłek')
+  }
+
+  const handleSave = async () => {
     setIsSaving(true)
     try {
       const response = await fetch('/api/settings', {
@@ -77,9 +143,7 @@ export default function SettingsPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          enabledMeals
-        }),
+        body: JSON.stringify(settings),
       })
 
       if (!response.ok) {
@@ -104,8 +168,18 @@ export default function SettingsPage() {
     )
   }
 
+  const allMealOptions: MealOption[] = [
+    ...DEFAULT_MEAL_OPTIONS,
+    ...settings.customMeals.map(cm => ({
+      type: 'OTHER' as MealType,
+      label: cm.label,
+      description: cm.description,
+      isCustom: true
+    }))
+  ]
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6 p-4">
       {/* Nawigacja */}
       <div className="flex items-center space-x-4">
         <Link href="/">
@@ -130,47 +204,125 @@ export default function SettingsPage() {
       {/* Karta ustawień */}
       <Card>
         <CardHeader>
-          <CardTitle>Posiłki wliczane do kaloryczności</CardTitle>
+          <CardTitle>Konfiguracja posiłków</CardTitle>
           <CardDescription>
-            Wybierz, które posiłki mają być uwzględniane w obliczeniach kaloryczności i wartości odżywczych.
-            Zmiany będą miały wpływ na wszystkie jadłospisy (przeszłe i przyszłe).
+            Wybierz ustawienia dla każdego posiłku. Możesz określić, czy posiłek jest wliczany do kaloryczności,
+            eksportowany w jadłospisie dla rodziców oraz w zestawieniu dla sanepidu.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Nagłówki kolumn */}
+          <div className="hidden md:grid md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 pb-2 border-b font-semibold text-sm text-gray-600">
+            <div>Posiłek</div>
+            <div className="text-center">Kaloryczność</div>
+            <div className="text-center">Dla rodziców</div>
+            <div className="text-center">Dla sanepidu</div>
+            <div></div>
+          </div>
+
           {/* Lista posiłków */}
-          <div className="space-y-4">
-            {MEAL_OPTIONS.map((meal) => {
-              const isEnabled = enabledMeals.includes(meal.type)
+          <div className="space-y-3">
+            {allMealOptions.map((meal, index) => {
+              const mealId = meal.isCustom ? settings.customMeals[index - DEFAULT_MEAL_OPTIONS.length]?.id : meal.type
+              const includeInCal = meal.isCustom ? false : settings.includeInCalories.includes(meal.type)
+              const exportParents = meal.isCustom ? false : settings.exportForParents.includes(meal.type)
+              const exportSanepid = meal.isCustom ? false : settings.exportForSanepid.includes(meal.type)
+
               return (
                 <div
-                  key={meal.type}
-                  className={`flex items-start space-x-3 p-4 rounded-lg border-2 transition-all ${
-                    isEnabled
-                      ? 'border-green-300 bg-green-50'
-                      : 'border-red-300 bg-red-50'
-                  }`}
+                  key={meal.isCustom ? mealId : meal.type}
+                  className="grid md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 p-4 rounded-lg border-2 border-gray-200 bg-gray-50 items-center"
                 >
-                  <Checkbox
-                    id={meal.type}
-                    checked={isEnabled}
-                    onCheckedChange={() => handleToggleMeal(meal.type)}
-                    disabled={isSaving}
-                  />
-                  <div className="flex-1">
-                    <Label
-                      htmlFor={meal.type}
-                      className="text-base font-semibold cursor-pointer"
-                    >
+                  {/* Nazwa posiłku */}
+                  <div>
+                    <div className="font-semibold text-gray-900 flex items-center gap-2">
                       {meal.label}
-                    </Label>
+                      {meal.isCustom && (
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Własny</span>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-600 mt-1">{meal.description}</p>
-                    <p className={`text-xs mt-2 font-medium ${isEnabled ? 'text-green-700' : 'text-red-700'}`}>
-                      {isEnabled ? '✓ Wliczany do kaloryczności' : '✗ NIE wliczany do kaloryczności'}
-                    </p>
+                  </div>
+
+                  {/* Checkboxy */}
+                  {!meal.isCustom && (
+                    <>
+                      <div className="flex items-center justify-center">
+                        <Checkbox
+                          id={`${meal.type}_calories`}
+                          checked={includeInCal}
+                          onCheckedChange={() => handleToggleSetting(meal.type, 'includeInCalories')}
+                          disabled={isSaving}
+                        />
+                        <Label htmlFor={`${meal.type}_calories`} className="sr-only">
+                          Wlicz do kaloryczności
+                        </Label>
+                      </div>
+
+                      <div className="flex items-center justify-center">
+                        <Checkbox
+                          id={`${meal.type}_parents`}
+                          checked={exportParents}
+                          onCheckedChange={() => handleToggleSetting(meal.type, 'exportForParents')}
+                          disabled={isSaving}
+                        />
+                        <Label htmlFor={`${meal.type}_parents`} className="sr-only">
+                          Eksport dla rodziców
+                        </Label>
+                      </div>
+
+                      <div className="flex items-center justify-center">
+                        <Checkbox
+                          id={`${meal.type}_sanepid`}
+                          checked={exportSanepid}
+                          onCheckedChange={() => handleToggleSetting(meal.type, 'exportForSanepid')}
+                          disabled={isSaving}
+                        />
+                        <Label htmlFor={`${meal.type}_sanepid`} className="sr-only">
+                          Eksport dla sanepidu
+                        </Label>
+                      </div>
+                    </>
+                  )}
+
+                  {meal.isCustom && (
+                    <>
+                      <div className="md:col-span-3 text-sm text-gray-500 text-center">
+                        Własne posiłki nie są uwzględniane w eksportach
+                      </div>
+                    </>
+                  )}
+
+                  {/* Przycisk usuwania dla własnych posiłków */}
+                  <div className="flex justify-end">
+                    {meal.isCustom && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveCustomMeal(mealId as string)}
+                        disabled={isSaving}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               )
             })}
+          </div>
+
+          {/* Przycisk dodawania nowego posiłku */}
+          <div className="pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setShowAddMealDialog(true)}
+              disabled={isSaving}
+              className="w-full border-dashed border-2"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Dodaj kolejny posiłek
+            </Button>
           </div>
 
           {/* Informacja */}
@@ -178,23 +330,9 @@ export default function SettingsPage() {
             <h3 className="font-semibold text-blue-900 mb-2">Ważne informacje:</h3>
             <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
               <li>Zmiany wpłyną na wszystkie jadłospisy w systemie</li>
-              <li>Posiłki odznaczone będą oznaczone kolorem czerwonym w jadłospisie</li>
-              <li>Wartości odżywcze będą przeliczane tylko dla zaznaczonych posiłków</li>
-              <li>Musisz wybrać przynajmniej jeden posiłek</li>
+              <li>Własne posiłki można dodawać do jadłospisów, ale nie będą uwzględniane w eksportach</li>
+              <li>Ustawienia eksportu będą wykorzystane w przyszłych funkcjach eksportu danych</li>
             </ul>
-          </div>
-
-          {/* Podsumowanie */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <p className="text-sm text-gray-700">
-              <strong>Wybrane posiłki ({enabledMeals.length}):</strong>{' '}
-              {enabledMeals.length > 0
-                ? MEAL_OPTIONS
-                    .filter(m => enabledMeals.includes(m.type))
-                    .map(m => m.label)
-                    .join(', ')
-                : 'Brak wybranych posiłków'}
-            </p>
           </div>
 
           {/* Przyciski akcji */}
@@ -209,7 +347,7 @@ export default function SettingsPage() {
             </Button>
             <Button
               onClick={handleSave}
-              disabled={isSaving || enabledMeals.length === 0}
+              disabled={isSaving}
               className="flex-1 bg-purple-600 hover:bg-purple-700"
             >
               {isSaving ? (
@@ -227,6 +365,49 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Dialog dodawania nowego posiłku */}
+      <Dialog open={showAddMealDialog} onOpenChange={setShowAddMealDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Dodaj nowy posiłek</DialogTitle>
+            <DialogDescription>
+              Wprowadź nazwę i opis nowego posiłku. Własne posiłki będą dostępne w jadłospisach.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="meal-label">Nazwa posiłku *</Label>
+              <Input
+                id="meal-label"
+                value={newMealLabel}
+                onChange={(e) => setNewMealLabel(e.target.value)}
+                placeholder="np. Drugie śniadanie specjalne"
+                maxLength={50}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="meal-description">Opis</Label>
+              <Input
+                id="meal-description"
+                value={newMealDescription}
+                onChange={(e) => setNewMealDescription(e.target.value)}
+                placeholder="np. Posiłek dla dzieci z dodatkowymi potrzebami"
+                maxLength={100}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddMealDialog(false)}>
+              Anuluj
+            </Button>
+            <Button onClick={handleAddCustomMeal} disabled={!newMealLabel.trim()}>
+              <Plus className="w-4 h-4 mr-2" />
+              Dodaj posiłek
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

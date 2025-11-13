@@ -1,7 +1,7 @@
 generator client {
     provider = "prisma-client-js"
     binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
-    output = "../node_modules/.prisma/client"
+    output = "/home/ubuntu/kartoteka_magazynowa_app/nextjs_space/node_modules/.prisma/client"
 }
 
 datasource db {
@@ -238,8 +238,17 @@ model User {
 // Ustawienia aplikacji - konfiguracja posiłków
 model AppSettings {
   id                    String   @id @default(cuid())
-  // Konfiguracja posiłków - które są wliczane do kaloryczności
-  enabledMeals          MealType[] @default([BREAKFAST, SECOND_BREAKFAST, LUNCH, FIRST_SNACK, DINNER])
+  // Konfiguracja posiłków - które są wliczane do kaloryczności (zachowane dla kompatybilności wstecznej)
+  enabledMeals          MealType[] @default([BREAKFAST, SECOND_BREAKFAST, LUNCH, FIRST_SNACK])
+  
+  // Nowa konfiguracja posiłków
+  includeInCalories     MealType[] @default([BREAKFAST, SECOND_BREAKFAST, LUNCH, FIRST_SNACK])
+  exportForParents      MealType[] @default([BREAKFAST, SECOND_BREAKFAST, LUNCH, FIRST_SNACK])
+  exportForSanepid      MealType[] @default([BREAKFAST, SECOND_BREAKFAST, LUNCH, FIRST_SNACK])
+  
+  // Własne posiłki (JSON z definicjami custom meals)
+  customMeals           Json?      @default("[]")
+  
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
