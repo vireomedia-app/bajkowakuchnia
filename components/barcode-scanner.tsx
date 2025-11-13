@@ -4,8 +4,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { Html5Qrcode } from 'html5-qrcode'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { Camera, X, AlertCircle, Loader2, Settings } from 'lucide-react'
+import { Camera, X, AlertCircle, Loader2, Settings, PackagePlus } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface BarcodeScannerProps {
@@ -20,6 +21,8 @@ export function BarcodeScanner({ isOpen, onClose, onScanSuccess, mode = 'add_pro
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [permissionDenied, setPermissionDenied] = useState(false)
+  const [showManualAddDialog, setShowManualAddDialog] = useState(false)
+  const [scannedBarcode, setScannedBarcode] = useState<string>('')
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const hasAutoStarted = useRef(false)
 
@@ -189,14 +192,24 @@ export function BarcodeScanner({ isOpen, onClose, onScanSuccess, mode = 'add_pro
       
     } catch (err: any) {
       console.error('Error fetching product data:', err)
-      toast.error(err.message || 'Nie znaleziono produktu', { id: 'barcode-search' })
-      setError(err.message)
-      setIsLoading(false)
-      // Restart scanner po błędzie
-      setTimeout(() => {
-        setError(null)
-        startScanner()
-      }, 2000)
+      
+      // W trybie dodawania produktu - zapytaj czy dodać produkt ręcznie
+      if (mode === 'add_product') {
+        toast.dismiss('barcode-search')
+        setScannedBarcode(barcode)
+        setShowManualAddDialog(true)
+        setIsLoading(false)
+      } else {
+        // W trybie przyjmowania zamówienia - pokaż błąd i restartuj skaner
+        toast.error(err.message || 'Nie znaleziono produktu', { id: 'barcode-search' })
+        setError(err.message)
+        setIsLoading(false)
+        // Restart scanner po błędzie
+        setTimeout(() => {
+          setError(null)
+          startScanner()
+        }, 2000)
+      }
     }
   }
 
@@ -204,7 +217,24 @@ export function BarcodeScanner({ isOpen, onClose, onScanSuccess, mode = 'add_pro
     await stopScanner()
     setError(null)
     setIsLoading(false)
+    setShowManualAddDialog(false)
+    setScannedBarcode('')
     onClose()
+  }
+  
+  const handleManualAddYes = () => {
+    setShowManualAddDialog(false)
+    // Wywołaj callback z danymi zawierającymi tylko kod kreskowy
+    onScanSuccess({ barcode: scannedBarcode })
+    onClose()
+  }
+  
+  const handleManualAddNo = () => {
+    setShowManualAddDialog(false)
+    setScannedBarcode('')
+    setError(null)
+    // Wznów skanowanie
+    startScanner()
   }
 
   return (
@@ -323,6 +353,34 @@ export function BarcodeScanner({ isOpen, onClose, onScanSuccess, mode = 'add_pro
           )}
         </div>
       </DialogContent>
+      
+      {/* Dialog pytający o ręczne dodanie produktu */}
+      <AlertDialog open={showManualAddDialog} onOpenChange={setShowManualAddDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center space-x-2">
+              <AlertCircle className="w-5 h-5 text-orange-600" />
+              <span>Produkt nie został znaleziony</span>
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              <div className="space-y-2">
+                <p>Produkt o kodzie kreskowym <strong>{scannedBarcode}</strong> nie został znaleziony w bazie Open Food Facts.</p>
+                <p className="text-sm">Czy chcesz dodać ten produkt ręcznie?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleManualAddNo}>
+              <X className="w-4 h-4 mr-2" />
+              Nie, skanuj dalej
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleManualAddYes} className="bg-blue-600 hover:bg-blue-700">
+              <PackagePlus className="w-4 h-4 mr-2" />
+              Tak, dodaj ręcznie
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 }
