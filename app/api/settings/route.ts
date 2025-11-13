@@ -28,10 +28,10 @@ export async function GET(request: NextRequest) {
       // Utwórz domyślne ustawienia
       settings = await prisma.appSettings.create({
         data: {
-          enabledMeals: ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'],
-          includeInCalories: ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'],
-          exportForParents: ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'],
-          exportForSanepid: ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'],
+          enabledMeals: ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as const,
+          includeInCalories: ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as const,
+          exportForParents: ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as const,
+          exportForSanepid: ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as const,
           customMeals: []
         }
       })
@@ -90,10 +90,10 @@ export async function PATCH(request: NextRequest) {
       // Utwórz nowe ustawienia
       settings = await prisma.appSettings.create({
         data: {
-          enabledMeals: updateData.enabledMeals || ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'],
-          includeInCalories: updateData.includeInCalories || ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'],
-          exportForParents: updateData.exportForParents || ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'],
-          exportForSanepid: updateData.exportForSanepid || ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'],
+          enabledMeals: updateData.enabledMeals || (['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as const),
+          includeInCalories: updateData.includeInCalories || (['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as const),
+          exportForParents: updateData.exportForParents || (['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as const),
+          exportForSanepid: updateData.exportForSanepid || (['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'] as const),
           customMeals: updateData.customMeals || []
         }
       })
