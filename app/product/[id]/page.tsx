@@ -31,13 +31,14 @@ export default async function ProductPage({ params }: ProductPageProps) {
       
       {/* Actions */}
       <div className="flex justify-end">
-        <AddTransactionButton productId={product.id} />
+        <AddTransactionButton productId={product.id} productUnit={product.unit} />
       </div>
       
       {/* Transactions List */}
       <TransactionsList 
         transactions={product.transactions || []} 
         productId={product.id}
+        productUnit={product.unit}
       />
     </div>
   )
