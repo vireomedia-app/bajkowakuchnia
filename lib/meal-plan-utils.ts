@@ -88,7 +88,10 @@ export function calculateRecipeNutrition(
 }
 
 // Oblicz wartości odżywcze dla dnia
-export function calculateDailyNutrition(day: MealPlanDay): DailyNutrition {
+export function calculateDailyNutrition(
+  day: MealPlanDay, 
+  mealTypesToInclude?: MealType[]
+): DailyNutrition {
   const nutrition: DailyNutrition = {
     calories: 0,
     protein: 0,
@@ -108,6 +111,13 @@ export function calculateDailyNutrition(day: MealPlanDay): DailyNutrition {
   }
 
   for (const meal of day.meals) {
+    // Jeśli podano filtr posiłków, sprawdź czy ten posiłek powinien być uwzględniony
+    if (mealTypesToInclude && mealTypesToInclude.length > 0) {
+      if (!mealTypesToInclude.includes(meal.mealType)) {
+        continue; // Pomiń ten posiłek
+      }
+    }
+
     // Zabezpieczenie przed brakiem receptur
     if (!meal.recipes || meal.recipes.length === 0) continue;
 

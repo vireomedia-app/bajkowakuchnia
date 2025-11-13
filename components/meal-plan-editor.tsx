@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useSensor, useSensors, PointerSensor, useDroppable, useDraggable } from '@dnd-kit/core';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,6 +35,23 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
   const [activeRecipe, setActiveRecipe] = useState<DraggableRecipe | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [appSettings, setAppSettings] = useState<any>(null);
+
+  // Pobierz ustawienia aplikacji
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch('/api/settings');
+        if (response.ok) {
+          const data = await response.json();
+          setAppSettings(data);
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -201,7 +218,12 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
   };
 
   const currentDay = mealPlan.days.find((day: any) => day.dayOfWeek === selectedDay);
-  const dailyNutrition = currentDay ? calculateDailyNutrition(currentDay) : null;
+  
+  // Pobierz listę posiłków do uwzględnienia w obliczeniach (domyślnie wszystkie podstawowe)
+  const includeInCalories = appSettings?.includeInCalories || ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'];
+  
+  // Oblicz wartości odżywcze TYLKO dla posiłków zaznaczonych w includeInCalories
+  const dailyNutrition = currentDay ? calculateDailyNutrition(currentDay, includeInCalories) : null;
   const validation = currentDay && mealPlan.standards && dailyNutrition
     ? validateDailyNutrition(dailyNutrition, mealPlan.standards)
     : null;
@@ -260,6 +282,33 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
     } catch (error) {
       console.error('Error exporting meal plan:', error);
       toast.error('Błąd podczas eksportowania jadłospisu');
+    }
+  };
+
+  const handleExportForParents = async () => {
+    try {
+      toast.info('Eksportuję jadłospis dla rodziców...');
+      
+      const response = await fetch(`/api/meal-plans/${mealPlan.id}/export-for-parents`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to export meal plan for parents');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Jadlospis_dla_rodzicow_${mealPlan.name.replace(/\s+/g, '_')}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Jadłospis dla rodziców został wyeksportowany');
+    } catch (error) {
+      console.error('Error exporting meal plan for parents:', error);
+      toast.error('Błąd podczas eksportowania jadłospisu dla rodziców');
     }
   };
 
@@ -327,6 +376,14 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
               >
                 <Download className="w-3 h-3 lg:w-4 lg:h-4" />
                 <span className="hidden sm:inline">Eksport</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                className="gap-1 lg:gap-2 text-xs lg:text-sm h-8 lg:h-10 px-2 lg:px-4"
+                onClick={handleExportForParents}
+              >
+                <Download className="w-3 h-3 lg:w-4 lg:h-4" />
+                <span className="hidden sm:inline">Dla rodziców</span>
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>

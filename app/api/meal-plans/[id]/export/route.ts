@@ -9,6 +9,15 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Pobierz ustawienia aplikacji
+    const appSettings = await prisma.appSettings.findFirst({
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Domyślne wartości jeśli nie ma ustawień
+    const includeInCalories = appSettings?.includeInCalories || ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'];
+    const exportForSanepid = appSettings?.exportForSanepid || ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK'];
+
     // Pobierz jadłospis z pełnymi danymi
     const mealPlan = await prisma.mealPlan.findUnique({
       where: { id: params.id },
@@ -205,7 +214,8 @@ export async function GET(
     let nutritionRow = 10;
     for (const day of mealPlan.days) {
       try {
-        const nutrition = calculateDailyNutrition(day);
+        // Oblicz wartości odżywcze TYLKO dla posiłków zaznaczonych w includeInCalories
+        const nutrition = calculateDailyNutrition(day, includeInCalories as any[]);
         const row = nutritionSheet.getRow(nutritionRow);
         
         row.getCell(1).value = DAY_OF_WEEK_LABELS[day.dayOfWeek] || `Dzień ${day.dayOfWeek}`;
@@ -319,6 +329,9 @@ export async function GET(
         }
         
         for (const meal of day.meals) {
+          // Pokaż tylko posiłki zaznaczone w exportForSanepid
+          if (!exportForSanepid.includes(meal.mealType)) continue;
+          
           if (!meal.recipes || meal.recipes.length === 0) continue;
           
           for (const mealRecipe of meal.recipes) {
