@@ -112,6 +112,7 @@ export async function createTransaction(productId: string, data: {
   document: string
   type: 'INCOME' | 'OUTCOME'
   quantity: number
+  loss?: number
 }) {
   try {
     return await prisma.$transaction(async (tx) => {
@@ -129,7 +130,9 @@ export async function createTransaction(productId: string, data: {
       if (data.type === 'INCOME') {
         newBalance += data.quantity
       } else {
-        newBalance -= data.quantity
+        // Dla rozchodu uwzględnij stratę
+        const totalOutcome = data.quantity + (data.loss || 0)
+        newBalance -= totalOutcome
       }
       
       // Ensure balance doesn't go below 0
@@ -145,6 +148,7 @@ export async function createTransaction(productId: string, data: {
           document: data.document,
           type: data.type,
           quantity: data.quantity,
+          loss: data.loss || 0,
           balance: newBalance
         }
       })
@@ -205,7 +209,9 @@ export async function recalculateBalances(productId: string) {
         if (transaction.type === 'INCOME') {
           runningBalance += transaction.quantity
         } else {
-          runningBalance -= transaction.quantity
+          // Dla rozchodu uwzględnij stratę
+          const totalOutcome = transaction.quantity + (transaction.loss || 0)
+          runningBalance -= totalOutcome
         }
 
         // Update the transaction with the new balance

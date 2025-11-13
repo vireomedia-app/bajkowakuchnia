@@ -108,7 +108,7 @@ export function OrderQuantityModal({
               <Input
                 id="quantity"
                 type="number"
-                step="0.01"
+                step="0.00001"
                 min="0.01"
                 placeholder="np. 10.5"
                 value={quantity}

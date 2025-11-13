@@ -401,7 +401,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                   <Input
                     id="initialStock"
                     type="number"
-                    step="0.01"
+                    step="0.00001"
                     min="0"
                     placeholder="0.00"
                     value={formData.initialStock}
@@ -430,7 +430,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                     <Input
                       id="calories"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.calories}
                       onChange={(e) => setFormData({ ...formData, calories: e.target.value })}
@@ -444,7 +444,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                     <Input
                       id="salt"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.salt}
                       onChange={(e) => setFormData({ ...formData, salt: e.target.value })}
@@ -458,7 +458,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                     <Input
                       id="protein"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.protein}
                       onChange={(e) => setFormData({ ...formData, protein: e.target.value })}
@@ -472,7 +472,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                     <Input
                       id="fat"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.fat}
                       onChange={(e) => setFormData({ ...formData, fat: e.target.value })}
@@ -488,7 +488,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                     <Input
                       id="saturatedFat"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.saturatedFat}
                       onChange={(e) => setFormData({ ...formData, saturatedFat: e.target.value })}
@@ -502,7 +502,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                     <Input
                       id="carbohydrates"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.carbohydrates}
                       onChange={(e) => setFormData({ ...formData, carbohydrates: e.target.value })}
@@ -518,7 +518,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                     <Input
                       id="sugars"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.sugars}
                       onChange={(e) => setFormData({ ...formData, sugars: e.target.value })}
@@ -532,7 +532,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                     <Input
                       id="calcium"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.calcium}
                       onChange={(e) => setFormData({ ...formData, calcium: e.target.value })}
@@ -546,7 +546,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                     <Input
                       id="iron"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.iron}
                       onChange={(e) => setFormData({ ...formData, iron: e.target.value })}
@@ -560,7 +560,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                     <Input
                       id="vitaminC"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.vitaminC}
                       onChange={(e) => setFormData({ ...formData, vitaminC: e.target.value })}

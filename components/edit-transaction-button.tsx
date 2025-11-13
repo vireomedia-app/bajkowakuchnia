@@ -140,7 +140,7 @@ export function EditTransactionButton({ transaction, productUnit = 'szt' }: Edit
               id="quantity"
               name="quantity"
               type="number"
-              step="0.01"
+              step="0.00001"
               value={formData.quantity}
               onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
               required
@@ -158,7 +158,7 @@ export function EditTransactionButton({ transaction, productUnit = 'szt' }: Edit
                 id="loss"
                 name="loss"
                 type="number"
-                step="0.01"
+                step="0.00001"
                 min="0"
                 placeholder="0.00"
                 value={formData.loss}

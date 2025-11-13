@@ -210,7 +210,7 @@ export function AddTransactionModal({ isOpen, onClose, productId, productUnit }:
             <Input
               id="quantity"
               type="number"
-              step="0.01"
+              step="0.00001"
               min="0"
               placeholder="0.00"
               value={formData.quantity}
@@ -239,7 +239,7 @@ export function AddTransactionModal({ isOpen, onClose, productId, productUnit }:
               <Input
                 id="loss"
                 type="number"
-                step="0.01"
+                step="0.00001"
                 min="0"
                 placeholder="0.00"
                 value={formData.loss}

@@ -33,6 +33,7 @@ interface EditProductModalProps {
     id: string;
     name: string;
     unit: string;
+    barcode?: string | null;
     manufacturer?: string | null;
     calories?: number | null;
     salt?: number | null;
@@ -64,6 +65,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
   const [formData, setFormData] = useState({
     name: product.name,
     unit: product.unit,
+    barcode: product.barcode || "",
     manufacturer: product.manufacturer || "",
     calories: product.calories?.toString() || "",
     salt: product.salt?.toString() || "",
@@ -83,6 +85,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
     setFormData({
       name: product.name,
       unit: product.unit,
+      barcode: product.barcode || "",
       manufacturer: product.manufacturer || "",
       calories: product.calories?.toString() || "",
       salt: product.salt?.toString() || "",
@@ -116,6 +119,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
       const submitData = {
         name: formData.name,
         unit: formData.unit,
+        barcode: formData.barcode || null,
         manufacturer: formData.manufacturer || null,
         calories: formData.calories ? parseFloat(formData.calories) : null,
         salt: formData.salt ? parseFloat(formData.salt) : null,
@@ -205,6 +209,21 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                 </div>
 
                 <div className="grid gap-2">
+                  <Label htmlFor="barcode">Kod kreskowy</Label>
+                  <Input
+                    id="barcode"
+                    value={formData.barcode}
+                    onChange={(e) =>
+                      setFormData({ ...formData, barcode: e.target.value })
+                    }
+                    placeholder="Np. 5900397002166"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Możesz dodać lub edytować kod kreskowy ręcznie
+                  </p>
+                </div>
+
+                <div className="grid gap-2">
                   <Label htmlFor="manufacturer">Nazwa producenta</Label>
                   <Input
                     id="manufacturer"
@@ -229,7 +248,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                     <Input
                       id="calories"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.calories}
                       onChange={(e) =>
@@ -244,7 +263,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                     <Input
                       id="salt"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.salt}
                       onChange={(e) =>
@@ -259,7 +278,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                     <Input
                       id="protein"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.protein}
                       onChange={(e) =>
@@ -274,7 +293,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                     <Input
                       id="fat"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.fat}
                       onChange={(e) =>
@@ -291,7 +310,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                     <Input
                       id="saturatedFat"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.saturatedFat}
                       onChange={(e) =>
@@ -306,7 +325,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                     <Input
                       id="carbohydrates"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.carbohydrates}
                       onChange={(e) =>
@@ -323,7 +342,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                     <Input
                       id="sugars"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.sugars}
                       onChange={(e) =>
@@ -338,7 +357,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                     <Input
                       id="calcium"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.calcium}
                       onChange={(e) =>
@@ -353,7 +372,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                     <Input
                       id="iron"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.iron}
                       onChange={(e) =>
@@ -368,7 +387,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                     <Input
                       id="vitaminC"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.vitaminC}
                       onChange={(e) =>
