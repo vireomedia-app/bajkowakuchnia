@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Warehouse, ChefHat, PackagePlus } from 'lucide-react'
+import { Warehouse, ChefHat, PackagePlus, Settings } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { DataManagement } from '@/components/data-management'
 import { LogoutButton } from '@/components/logout-button'
 import { OrderReceivingModal } from '@/components/order-receiving-modal'
@@ -102,6 +103,19 @@ export default function HomePage() {
 
         {/* Data Management Section */}
         <DataManagement />
+
+        {/* Przycisk Ustawienia główne */}
+        <div className="mt-12 flex justify-center">
+          <Link href="/settings">
+            <Button 
+              variant="outline" 
+              className="px-6 py-3 text-base border-2 hover:border-purple-500 hover:bg-purple-50"
+            >
+              <Settings className="w-5 h-5 mr-2" />
+              Ustawienia główne
+            </Button>
+          </Link>
+        </div>
 
         {/* Order Receiving Modal */}
         <OrderReceivingModal 
