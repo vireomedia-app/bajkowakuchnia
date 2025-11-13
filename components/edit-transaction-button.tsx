@@ -32,10 +32,12 @@ interface EditTransactionButtonProps {
     document: string
     type: 'INCOME' | 'OUTCOME'
     quantity: number
+    loss?: number | null
   }
+  productUnit?: string
 }
 
-export function EditTransactionButton({ transaction }: EditTransactionButtonProps) {
+export function EditTransactionButton({ transaction, productUnit = 'szt' }: EditTransactionButtonProps) {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -43,7 +45,8 @@ export function EditTransactionButton({ transaction }: EditTransactionButtonProp
     date: format(new Date(transaction.date), 'yyyy-MM-dd'),
     document: transaction.document,
     type: transaction.type,
-    quantity: transaction.quantity.toString()
+    quantity: transaction.quantity.toString(),
+    loss: (transaction.loss || 0).toString()
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -132,17 +135,40 @@ export function EditTransactionButton({ transaction }: EditTransactionButtonProp
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="quantity">Ilość</Label>
+            <Label htmlFor="quantity">Ilość ({productUnit})</Label>
             <Input
               id="quantity"
               name="quantity"
               type="number"
-              step="0.5"
+              step="0.01"
               value={formData.quantity}
               onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
               required
             />
           </div>
+
+          {/* Pole straty - tylko dla rozchodów */}
+          {formData.type === 'OUTCOME' && (
+            <div className="space-y-2">
+              <Label htmlFor="loss" className="flex items-center space-x-2">
+                <span>Zakładana strata (opcjonalnie)</span>
+                <span className="text-xs text-gray-500">(np. obierki)</span>
+              </Label>
+              <Input
+                id="loss"
+                name="loss"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={formData.loss}
+                onChange={(e) => setFormData({ ...formData, loss: e.target.value })}
+              />
+              <p className="text-xs text-gray-500">
+                Podaj ewentualną stratę w {productUnit}
+              </p>
+            </div>
+          )}
 
           <div className="flex justify-end gap-3">
             <Button

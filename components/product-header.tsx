@@ -58,7 +58,7 @@ export function ProductHeader({ product }: ProductHeaderProps) {
       </div>
       
       <div className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           {/* Current Stock */}
           <div className="text-center p-4 bg-blue-50 rounded-lg">
             <div className="text-2xl font-bold text-blue-900">
@@ -88,6 +88,14 @@ export function ProductHeader({ product }: ProductHeaderProps) {
               {product?.unit || 'szt'}
             </div>
             <div className="text-sm text-gray-600">Jednostka miary</div>
+          </div>
+          
+          {/* Barcode */}
+          <div className="text-center p-4 bg-gray-50 rounded-lg">
+            <div className="text-lg font-semibold text-gray-900 break-words">
+              {product?.barcode || 'Brak'}
+            </div>
+            <div className="text-sm text-gray-600">Kod kreskowy</div>
           </div>
           
           {/* Total Transactions */}

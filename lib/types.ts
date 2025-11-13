@@ -4,6 +4,7 @@ export interface Product {
   name: string
   unit: string
   currentStock: number
+  barcode?: string | null
   
   // Wartości odżywcze (na 100g)
   manufacturer?: string | null
@@ -32,6 +33,7 @@ export interface Transaction {
   document: string
   type: 'INCOME' | 'OUTCOME'
   quantity: number
+  loss?: number | null
   balance: number
   createdAt: Date
   product?: Product

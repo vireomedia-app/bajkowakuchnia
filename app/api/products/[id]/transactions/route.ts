@@ -10,7 +10,8 @@ const createTransactionSchema = z.object({
   date: z.string().transform((str) => new Date(str)),
   document: z.string().optional().default(''),
   type: z.enum(['INCOME', 'OUTCOME']),
-  quantity: z.number().min(0.01, 'Ilość musi być większa od 0')
+  quantity: z.number().min(0.01, 'Ilość musi być większa od 0'),
+  loss: z.number().min(0).optional().default(0)
 })
 
 export async function POST(

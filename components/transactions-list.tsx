@@ -10,9 +10,10 @@ import { DeleteTransactionButton } from './delete-transaction-button'
 interface TransactionsListProps {
   transactions: Transaction[]
   productId: string
+  productUnit?: string
 }
 
-export function TransactionsList({ transactions }: TransactionsListProps) {
+export function TransactionsList({ transactions, productUnit = 'szt' }: TransactionsListProps) {
   if (!transactions || transactions.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-md border border-gray-100 p-12 text-center">
@@ -45,13 +46,13 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
                 Dokument
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Przychód
+                Przychód ({productUnit})
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Rozchód
+                Rozchód ({productUnit})
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Saldo
+                Saldo ({productUnit})
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Akcje
@@ -114,7 +115,7 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
                   <div className="flex items-center justify-end space-x-2">
-                    <EditTransactionButton transaction={transaction} />
+                    <EditTransactionButton transaction={transaction} productUnit={productUnit} />
                     <DeleteTransactionButton transactionId={transaction?.id || ''} />
                   </div>
                 </td>
@@ -146,7 +147,7 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
                 </span>
               </div>
               <div className="flex items-center space-x-1">
-                <EditTransactionButton transaction={transaction} />
+                <EditTransactionButton transaction={transaction} productUnit={productUnit} />
                 <DeleteTransactionButton transactionId={transaction?.id || ''} />
               </div>
             </div>
