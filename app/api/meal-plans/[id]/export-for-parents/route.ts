@@ -139,6 +139,7 @@ export async function GET(
             if (idx > 0) richTextParts.push({ text: '\n' });
             richTextParts.push({ text: recipe.name || 'Brak nazwy', font: { bold: true } });
             richTextParts.push({ text: '\n' });
+            richTextParts.push({ text: 'Skład: ' });
             
             // Składniki
             if (recipe.ingredients && recipe.ingredients.length > 0) {
@@ -195,14 +196,18 @@ export async function GET(
       exportForParents.forEach((mealType: string) => {
         const meal = day.meals?.find(m => m.mealType === mealType);
         if (meal && meal.recipes && meal.recipes.length > 0) {
-          // Każda receptura ma teraz: nazwę (1 linia) + składniki (1+ linii) + alergeny (2 linie)
-          // Szacujemy ~4 linie na recepturę
-          const estimatedLines = meal.recipes.length * 4;
+          // Każda receptura ma teraz: nazwę (1 linia) + "Skład:" (1 linia) + składniki (1+ linii) + alergeny (2 linie)
+          // Szacujemy ~5 linii na recepturę + dodatkowe linie dla długich list składników
+          const ingredientsCount = meal.recipes.reduce((sum, mr) => {
+            return sum + (mr.recipe?.ingredients?.length || 0);
+          }, 0);
+          // Każdy składnik zajmuje około 0.3 linii (przez przecinki)
+          const estimatedLines = meal.recipes.length * 5 + Math.ceil(ingredientsCount * 0.3);
           maxLines = Math.max(maxLines, estimatedLines);
         }
       });
-      // Ustaw wysokość na podstawie liczby linii (około 18 pikseli na linię + padding)
-      row.height = Math.max(30, maxLines * 18 + 10);
+      // Ustaw wysokość na podstawie liczby linii - zwiększony współczynnik dla lepszej widoczności
+      row.height = Math.max(40, maxLines * 25 + 20);
       
       currentRow++;
     }
