@@ -81,6 +81,7 @@ export async function POST(request: NextRequest) {
             name: product.name,
             unit: product.unit,
             currentStock: product.currentStock || 0,
+            barcode: product.barcode,
             manufacturer: product.manufacturer,
             calories: product.calories,
             salt: product.salt,
@@ -115,6 +116,7 @@ export async function POST(request: NextRequest) {
             document: transaction.document,
             type: transaction.type,
             quantity: transaction.quantity,
+            loss: transaction.loss,
             balance: transaction.balance,
             createdAt: transaction.createdAt ? new Date(transaction.createdAt) : undefined
           }
@@ -191,9 +193,12 @@ export async function POST(request: NextRequest) {
           data: {
             name: mealPlan.name,
             weekNumber: mealPlan.weekNumber,
+            startDate: mealPlan.startDate ? new Date(mealPlan.startDate) : null,
+            endDate: mealPlan.endDate ? new Date(mealPlan.endDate) : null,
             season: mealPlan.season,
             description: mealPlan.description,
             standardsId: newStandardsId,
+            displayOrder: mealPlan.displayOrder ?? 0,
             createdAt: mealPlan.createdAt ? new Date(mealPlan.createdAt) : undefined,
             updatedAt: mealPlan.updatedAt ? new Date(mealPlan.updatedAt) : undefined
           }
