@@ -50,6 +50,8 @@ export async function POST(
                 recipes: {
                   create: meal.recipes.map((recipe) => ({
                     recipeId: recipe.recipeId,
+                    servings: recipe.servings,
+                    order: recipe.order,
                   })),
                 },
               })),

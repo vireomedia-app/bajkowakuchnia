@@ -32,7 +32,7 @@ export async function GET() {
           orderBy: { dayOfWeek: 'asc' },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { displayOrder: 'asc' },
     });
 
     return NextResponse.json(mealPlans);
