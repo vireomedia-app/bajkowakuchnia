@@ -169,10 +169,10 @@ export async function GET(
                   ingredientTexts.push({ text: ', ' });
                 }
                 
-                // Dodaj nazwę składnika (pogrubiony jeśli ma alergeny)
+                // Dodaj nazwę składnika (kursywa + pogrubiony jeśli ma alergeny)
                 ingredientTexts.push({
                   text: product.name,
-                  font: hasAllergens ? { bold: true } : {}
+                  font: hasAllergens ? { italic: true, bold: true } : { italic: true }
                 });
               });
               
@@ -197,24 +197,6 @@ export async function GET(
       });
       
       row.alignment = { vertical: 'top', wrapText: true };
-      
-      // Oblicz wysokość wiersza uwzględniając składniki i alergeny
-      let maxLines = 1;
-      exportedMealTypes.forEach((mt) => {
-        const meal = day.meals?.find(m => m.mealType === mt);
-        if (meal && meal.recipes && meal.recipes.length > 0) {
-          // Każda receptura ma teraz: nazwę (1 linia) + "Skład:" (1 linia) + składniki (1+ linii) + alergeny (2 linie)
-          // Szacujemy ~5 linii na recepturę + dodatkowe linie dla długich list składników
-          const ingredientsCount = meal.recipes.reduce((sum, mr) => {
-            return sum + (mr.recipe?.ingredients?.length || 0);
-          }, 0);
-          // Każdy składnik zajmuje około 0.3 linii (przez przecinki)
-          const estimatedLines = meal.recipes.length * 5 + Math.ceil(ingredientsCount * 0.3);
-          maxLines = Math.max(maxLines, estimatedLines);
-        }
-      });
-      // Ustaw wysokość na podstawie liczby linii - zwiększony współczynnik dla lepszej widoczności
-      row.height = Math.max(40, maxLines * 25 + 20);
       
       currentRow++;
     }
