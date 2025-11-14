@@ -34,6 +34,20 @@ export function MealPlanCreator({ standards }: MealPlanCreatorProps) {
     standardsId: standards[0]?.id || '',
   });
 
+  // Automatycznie aktualizuj nazwę jadłospisu na podstawie zakresu dat
+  useEffect(() => {
+    if (formData.startDate && formData.endDate) {
+      const startDateStr = format(formData.startDate, 'dd.MM.yyyy', { locale: pl });
+      const endDateStr = format(formData.endDate, 'dd.MM.yyyy', { locale: pl });
+      const suggestedName = `Jadłospis ${startDateStr} - ${endDateStr}`;
+      
+      // Aktualizuj nazwę tylko jeśli jest pusta lub zawiera poprzednio wygenerowaną nazwę
+      if (!formData.name || formData.name.startsWith('Jadłospis ')) {
+        setFormData(prev => ({ ...prev, name: suggestedName }));
+      }
+    }
+  }, [formData.startDate, formData.endDate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     

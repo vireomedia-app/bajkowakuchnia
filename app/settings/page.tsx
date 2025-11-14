@@ -301,80 +301,153 @@ export default function SettingsPage() {
               return (
                 <div
                   key={meal.isCustom ? mealId : meal.type}
-                  className="grid md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 p-4 rounded-lg border-2 border-gray-200 bg-gray-50 items-center"
+                  className="p-4 rounded-lg border-2 border-gray-200 bg-gray-50"
                 >
-                  {/* Nazwa posiłku */}
-                  <div>
-                    <div className="font-semibold text-gray-900 flex items-center gap-2">
-                      {meal.label}
-                      {meal.isCustom && (
-                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Własny</span>
-                      )}
+                  {/* Desktop: Grid layout */}
+                  <div className="hidden md:grid md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 items-center">
+                    {/* Nazwa posiłku */}
+                    <div>
+                      <div className="font-semibold text-gray-900 flex items-center gap-2">
+                        {meal.label}
+                        {meal.isCustom && (
+                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Własny</span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1">{meal.description}</p>
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">{meal.description}</p>
-                  </div>
 
-                  {/* Checkboxy */}
-                  {!meal.isCustom && (
-                    <>
-                      <div className="flex items-center justify-center">
-                        <Checkbox
-                          id={`${meal.type}_calories`}
-                          checked={includeInCal}
-                          onCheckedChange={() => handleToggleSetting(meal.type, 'includeInCalories')}
-                          disabled={isSaving}
-                        />
-                        <Label htmlFor={`${meal.type}_calories`} className="sr-only">
-                          Wlicz do kaloryczności
-                        </Label>
-                      </div>
+                    {/* Checkboxy */}
+                    {!meal.isCustom && (
+                      <>
+                        <div className="flex items-center justify-center">
+                          <Checkbox
+                            id={`${meal.type}_calories`}
+                            checked={includeInCal}
+                            onCheckedChange={() => handleToggleSetting(meal.type, 'includeInCalories')}
+                            disabled={isSaving}
+                          />
+                          <Label htmlFor={`${meal.type}_calories`} className="sr-only">
+                            Wlicz do kaloryczności
+                          </Label>
+                        </div>
 
-                      <div className="flex items-center justify-center">
-                        <Checkbox
-                          id={`${meal.type}_parents`}
-                          checked={exportParents}
-                          onCheckedChange={() => handleToggleSetting(meal.type, 'exportForParents')}
-                          disabled={isSaving}
-                        />
-                        <Label htmlFor={`${meal.type}_parents`} className="sr-only">
-                          Eksport dla rodziców
-                        </Label>
-                      </div>
+                        <div className="flex items-center justify-center">
+                          <Checkbox
+                            id={`${meal.type}_parents`}
+                            checked={exportParents}
+                            onCheckedChange={() => handleToggleSetting(meal.type, 'exportForParents')}
+                            disabled={isSaving}
+                          />
+                          <Label htmlFor={`${meal.type}_parents`} className="sr-only">
+                            Eksport dla rodziców
+                          </Label>
+                        </div>
 
-                      <div className="flex items-center justify-center">
-                        <Checkbox
-                          id={`${meal.type}_sanepid`}
-                          checked={exportSanepid}
-                          onCheckedChange={() => handleToggleSetting(meal.type, 'exportForSanepid')}
-                          disabled={isSaving}
-                        />
-                        <Label htmlFor={`${meal.type}_sanepid`} className="sr-only">
-                          Eksport dla sanepidu
-                        </Label>
-                      </div>
-                    </>
-                  )}
+                        <div className="flex items-center justify-center">
+                          <Checkbox
+                            id={`${meal.type}_sanepid`}
+                            checked={exportSanepid}
+                            onCheckedChange={() => handleToggleSetting(meal.type, 'exportForSanepid')}
+                            disabled={isSaving}
+                          />
+                          <Label htmlFor={`${meal.type}_sanepid`} className="sr-only">
+                            Eksport dla sanepidu
+                          </Label>
+                        </div>
+                      </>
+                    )}
 
-                  {meal.isCustom && (
-                    <>
-                      <div className="md:col-span-3 text-sm text-gray-500 text-center">
+                    {meal.isCustom && (
+                      <div className="col-span-3 text-sm text-gray-500 text-center">
                         Własne posiłki nie są uwzględniane w eksportach
                       </div>
-                    </>
-                  )}
+                    )}
 
-                  {/* Przycisk usuwania dla własnych posiłków */}
-                  <div className="flex justify-end">
+                    {/* Przycisk usuwania dla własnych posiłków */}
+                    <div className="flex justify-end">
+                      {meal.isCustom && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveCustomMeal(mealId as string)}
+                          disabled={isSaving}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Mobile: Stack layout */}
+                  <div className="md:hidden space-y-3">
+                    {/* Nazwa posiłku */}
+                    <div>
+                      <div className="font-semibold text-gray-900 flex items-center gap-2">
+                        {meal.label}
+                        {meal.isCustom && (
+                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Własny</span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1">{meal.description}</p>
+                    </div>
+
+                    {/* Checkboxy dla mobile */}
+                    {!meal.isCustom && (
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="flex flex-col items-center gap-2 p-2 bg-white rounded border">
+                          <Checkbox
+                            id={`${meal.type}_calories_mobile`}
+                            checked={includeInCal}
+                            onCheckedChange={() => handleToggleSetting(meal.type, 'includeInCalories')}
+                            disabled={isSaving}
+                          />
+                          <Label htmlFor={`${meal.type}_calories_mobile`} className="text-xs text-center leading-tight">
+                            Kalor.
+                          </Label>
+                        </div>
+
+                        <div className="flex flex-col items-center gap-2 p-2 bg-white rounded border">
+                          <Checkbox
+                            id={`${meal.type}_parents_mobile`}
+                            checked={exportParents}
+                            onCheckedChange={() => handleToggleSetting(meal.type, 'exportForParents')}
+                            disabled={isSaving}
+                          />
+                          <Label htmlFor={`${meal.type}_parents_mobile`} className="text-xs text-center leading-tight">
+                            Rodzice
+                          </Label>
+                        </div>
+
+                        <div className="flex flex-col items-center gap-2 p-2 bg-white rounded border">
+                          <Checkbox
+                            id={`${meal.type}_sanepid_mobile`}
+                            checked={exportSanepid}
+                            onCheckedChange={() => handleToggleSetting(meal.type, 'exportForSanepid')}
+                            disabled={isSaving}
+                          />
+                          <Label htmlFor={`${meal.type}_sanepid_mobile`} className="text-xs text-center leading-tight">
+                            Sanepid
+                          </Label>
+                        </div>
+                      </div>
+                    )}
+
                     {meal.isCustom && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveCustomMeal(mealId as string)}
-                        disabled={isSaving}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex justify-between items-center">
+                        <div className="text-sm text-gray-500">
+                          Własne posiłki nie są uwzględniane w eksportach
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveCustomMeal(mealId as string)}
+                          disabled={isSaving}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>

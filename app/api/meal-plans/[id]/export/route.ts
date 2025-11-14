@@ -126,11 +126,7 @@ export async function GET(
     headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
     headerRow.height = 25;
     
-    // Ustaw szerokość kolumn - TYLKO dla wyeksportowanych posiłków
-    summarySheet.getColumn(1).width = 20;
-    for (let i = 2; i <= exportedMealTypes.length + 1; i++) {
-      summarySheet.getColumn(i).width = 25;
-    }
+    // Szerokość kolumn zostanie ustawiona automatycznie po wypełnieniu danych
     
     // Wypełnij dane dla każdego dnia
     let currentRow = 6;
@@ -181,6 +177,27 @@ export async function GET(
         };
       }
     }
+    
+    // Auto-dopasowanie szerokości kolumn w arkuszu podsumowania
+    summarySheet.columns.forEach((column: any, index: number) => {
+      let maxLength = 0;
+      column.eachCell?.({ includeEmpty: true }, (cell: any) => {
+        const cellValue = cell.value ? cell.value.toString() : '';
+        const cellLength = cellValue.split('\n').reduce((max: number, line: string) => {
+          return Math.max(max, line.length);
+        }, 0);
+        if (cellLength > maxLength) {
+          maxLength = cellLength;
+        }
+      });
+      // Pierwsza kolumna (Dzień tygodnia) - mniejsza szerokość
+      if (index === 0) {
+        column.width = Math.max(15, Math.min(maxLength + 2, 20));
+      } else {
+        // Kolumny z posiłkami - większa szerokość dla pełnej widoczności
+        column.width = Math.max(20, Math.min(maxLength * 1.2 + 4, 60));
+      }
+    });
     
     // Arkusz 2: Wartości odżywcze
     const nutritionSheet = workbook.addWorksheet('Wartości odżywcze');
@@ -238,10 +255,7 @@ export async function GET(
     nutritionHeaderRow.font = { bold: true };
     nutritionHeaderRow.alignment = { horizontal: 'center', vertical: 'middle' };
     
-    // Ustaw szerokość kolumn
-    for (let i = 1; i <= 11; i++) {
-      nutritionSheet.getColumn(i).width = 14;
-    }
+    // Szerokość kolumn zostanie ustawiona automatycznie po wypełnieniu danych
     
     // Wypełnij wartości odżywcze dla każdego dnia
     let nutritionRow = 10;
@@ -304,6 +318,24 @@ export async function GET(
       }
     }
     
+    // Auto-dopasowanie szerokości kolumn w arkuszu wartości odżywczych
+    nutritionSheet.columns.forEach((column: any, index: number) => {
+      let maxLength = 0;
+      column.eachCell?.({ includeEmpty: true }, (cell: any) => {
+        const cellValue = cell.value ? cell.value.toString() : '';
+        if (cellValue.length > maxLength) {
+          maxLength = cellValue.length;
+        }
+      });
+      // Pierwsza kolumna (Dzień) - większa szerokość
+      if (index === 0) {
+        column.width = Math.max(15, Math.min(maxLength + 2, 20));
+      } else {
+        // Kolumny z danymi - szerokość odpowiednia do zawartości
+        column.width = Math.max(14, Math.min(maxLength * 1.2 + 3, 25));
+      }
+    });
+    
     // Arkusz 3: Receptury i składniki
     const detailsSheet = workbook.addWorksheet('Szczegóły receptur');
     
@@ -315,13 +347,7 @@ export async function GET(
     detailsTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     detailsSheet.getRow(1).height = 30;
     
-    // Ustaw szerokość kolumn
-    detailsSheet.getColumn(1).width = 20; // Dzień
-    detailsSheet.getColumn(2).width = 25; // Posiłek
-    detailsSheet.getColumn(3).width = 30; // Receptura
-    detailsSheet.getColumn(4).width = 30; // Składnik
-    detailsSheet.getColumn(5).width = 15; // Ilość
-    detailsSheet.getColumn(6).width = 12; // Jednostka
+    // Szerokość kolumn zostanie ustawiona automatycznie po wypełnieniu danych
     
     let detailsRow = 3;
     
@@ -424,6 +450,38 @@ export async function GET(
         }
       }
     }
+    
+    // Auto-dopasowanie szerokości kolumn w arkuszu szczegółów
+    detailsSheet.columns.forEach((column: any, index: number) => {
+      let maxLength = 0;
+      column.eachCell?.({ includeEmpty: true }, (cell: any) => {
+        const cellValue = cell.value ? cell.value.toString() : '';
+        const cellLength = cellValue.split('\n').reduce((max: number, line: string) => {
+          return Math.max(max, line.length);
+        }, 0);
+        if (cellLength > maxLength) {
+          maxLength = cellLength;
+        }
+      });
+      
+      // Różne szerokości dla różnych kolumn
+      if (index === 0) {
+        // Pierwsza kolumna (pusta) - minimalna szerokość
+        column.width = 3;
+      } else if (index === 1) {
+        // Kolumna "Posiłek" - średnia szerokość
+        column.width = Math.max(18, Math.min(maxLength * 1.2 + 2, 25));
+      } else if (index === 2) {
+        // Kolumna "Receptura" - większa szerokość
+        column.width = Math.max(25, Math.min(maxLength * 1.2 + 3, 45));
+      } else if (index === 3) {
+        // Kolumna "Składnik" - większa szerokość
+        column.width = Math.max(25, Math.min(maxLength * 1.2 + 3, 45));
+      } else {
+        // Kolumny "Ilość" i "Jednostka" - mniejsza szerokość
+        column.width = Math.max(10, Math.min(maxLength * 1.2 + 2, 15));
+      }
+    });
     
     // Wygeneruj plik Excel
     const buffer = await workbook.xlsx.writeBuffer();
