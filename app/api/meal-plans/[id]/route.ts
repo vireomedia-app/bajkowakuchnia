@@ -69,6 +69,8 @@ export async function PUT(
       data: {
         name: data.name,
         weekNumber: data.weekNumber,
+        startDate: data.startDate ? new Date(data.startDate) : null,
+        endDate: data.endDate ? new Date(data.endDate) : null,
         season: data.season,
         description: data.description,
         standardsId: data.standardsId,

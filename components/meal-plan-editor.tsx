@@ -46,8 +46,15 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
   const [isDeleting, setIsDeleting] = useState(false);
   const [appSettings, setAppSettings] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  
+  // Usuń zakres dat z nazwy, jeśli istnieje (aby pokazać czystą nazwę w formularzu)
+  const getCleanName = (name: string) => {
+    const dateRangePattern = / - \d{2}\.\d{2}\.\d{4}-\d{2}\.\d{2}\.\d{4}$/;
+    return name.replace(dateRangePattern, '');
+  };
+  
   const [editFormData, setEditFormData] = useState({
-    name: initialMealPlan.name,
+    name: getCleanName(initialMealPlan.name),
     startDate: initialMealPlan.startDate ? new Date(initialMealPlan.startDate) : undefined as Date | undefined,
     endDate: initialMealPlan.endDate ? new Date(initialMealPlan.endDate) : undefined as Date | undefined,
     season: initialMealPlan.season as Season | '',
@@ -285,6 +292,20 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
       return;
     }
 
+    // Automatycznie dodaj zakres dat do nazwy jeśli daty są wybrane
+    let finalName = editFormData.name.trim();
+    if (editFormData.startDate && editFormData.endDate) {
+      const startDateStr = format(editFormData.startDate, 'dd.MM.yyyy', { locale: pl });
+      const endDateStr = format(editFormData.endDate, 'dd.MM.yyyy', { locale: pl });
+      
+      // Usuń stary zakres dat z nazwy (jeśli istnieje)
+      const dateRangePattern = / - \d{2}\.\d{2}\.\d{4}-\d{2}\.\d{2}\.\d{4}$/;
+      const nameWithoutDates = finalName.replace(dateRangePattern, '');
+      
+      // Dodaj nowy zakres dat
+      finalName = `${nameWithoutDates} - ${startDateStr}-${endDateStr}`;
+    }
+
     try {
       const response = await fetch(`/api/meal-plans/${mealPlan.id}`, {
         method: 'PUT',
@@ -292,7 +313,7 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: editFormData.name.trim(),
+          name: finalName,
           startDate: editFormData.startDate ? editFormData.startDate.toISOString() : null,
           endDate: editFormData.endDate ? editFormData.endDate.toISOString() : null,
           season: editFormData.season || null,
@@ -308,7 +329,7 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
       const updatedMealPlan = await response.json();
       setMealPlan(updatedMealPlan);
       setEditFormData({
-        name: updatedMealPlan.name,
+        name: getCleanName(updatedMealPlan.name),
         startDate: updatedMealPlan.startDate ? new Date(updatedMealPlan.startDate) : undefined,
         endDate: updatedMealPlan.endDate ? new Date(updatedMealPlan.endDate) : undefined,
         season: updatedMealPlan.season || '',

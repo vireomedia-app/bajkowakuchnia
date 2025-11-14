@@ -34,20 +34,6 @@ export function MealPlanCreator({ standards }: MealPlanCreatorProps) {
     standardsId: standards[0]?.id || '',
   });
 
-  // Automatycznie aktualizuj nazwę jadłospisu na podstawie zakresu dat
-  useEffect(() => {
-    if (formData.startDate && formData.endDate) {
-      const startDateStr = format(formData.startDate, 'dd.MM.yyyy', { locale: pl });
-      const endDateStr = format(formData.endDate, 'dd.MM.yyyy', { locale: pl });
-      const suggestedName = `Jadłospis ${startDateStr} - ${endDateStr}`;
-      
-      // Aktualizuj nazwę tylko jeśli jest pusta lub zawiera poprzednio wygenerowaną nazwę
-      if (!formData.name || formData.name.startsWith('Jadłospis ')) {
-        setFormData(prev => ({ ...prev, name: suggestedName }));
-      }
-    }
-  }, [formData.startDate, formData.endDate]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -58,6 +44,17 @@ export function MealPlanCreator({ standards }: MealPlanCreatorProps) {
 
     setIsLoading(true);
 
+    // Automatycznie dodaj zakres dat do nazwy jeśli daty są wybrane
+    let finalName = formData.name.trim();
+    if (formData.startDate && formData.endDate) {
+      const startDateStr = format(formData.startDate, 'dd.MM.yyyy', { locale: pl });
+      const endDateStr = format(formData.endDate, 'dd.MM.yyyy', { locale: pl });
+      // Dodaj zakres dat do nazwy, jeśli go jeszcze nie ma
+      if (!finalName.includes(startDateStr) && !finalName.includes(endDateStr)) {
+        finalName = `${finalName} - ${startDateStr}-${endDateStr}`;
+      }
+    }
+
     try {
       const response = await fetch('/api/meal-plans', {
         method: 'POST',
@@ -65,7 +62,7 @@ export function MealPlanCreator({ standards }: MealPlanCreatorProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: formData.name.trim(),
+          name: finalName,
           startDate: formData.startDate ? formData.startDate.toISOString() : null,
           endDate: formData.endDate ? formData.endDate.toISOString() : null,
           season: formData.season || null,
