@@ -49,7 +49,8 @@ export async function POST(request: NextRequest) {
       mealPlans = [],
       mealPlanDays = [],
       mealPlanMeals = [],
-      mealPlanRecipes = []
+      mealPlanRecipes = [],
+      appSettings = []
     } = importData.data
 
     // UWAGA: To usunie WSZYSTKIE obecne dane (poza użytkownikami)!
@@ -65,6 +66,7 @@ export async function POST(request: NextRequest) {
       await tx.recipe.deleteMany()
       await tx.transaction.deleteMany()
       await tx.product.deleteMany()
+      await tx.appSettings.deleteMany()
 
       // Mapy do konwersji starych ID na nowe
       const productIdMap = new Map<string, string>()
@@ -266,6 +268,22 @@ export async function POST(request: NextRequest) {
           }
         })
       }
+
+      // Importuj ustawienia aplikacji
+      for (const settings of appSettings) {
+        await tx.appSettings.create({
+          data: {
+            enabledMeals: settings.enabledMeals || [],
+            includeInCalories: settings.includeInCalories || [],
+            exportForParents: settings.exportForParents || [],
+            exportForSanepid: settings.exportForSanepid || [],
+            customMeals: settings.customMeals || [],
+            nutritionalGuidelines: settings.nutritionalGuidelines,
+            createdAt: settings.createdAt ? new Date(settings.createdAt) : undefined,
+            updatedAt: settings.updatedAt ? new Date(settings.updatedAt) : undefined
+          }
+        })
+      }
     }, {
       timeout: 300000, // 5 minut
       maxWait: 300000
@@ -283,7 +301,8 @@ export async function POST(request: NextRequest) {
         mealPlansCount: mealPlans.length,
         mealPlanDaysCount: mealPlanDays.length,
         mealPlanMealsCount: mealPlanMeals.length,
-        mealPlanRecipesCount: mealPlanRecipes.length
+        mealPlanRecipesCount: mealPlanRecipes.length,
+        appSettingsCount: appSettings.length
       }
     })
     

@@ -14,12 +14,12 @@ export function NutritionalGuidelines({ guidelines }: NutritionalGuidelinesProps
   
   if (!guidelines) return null;
   
-  // Split guidelines into sentences
-  const sentences = guidelines.split(/\n+/).filter(s => s.trim());
+  const PREVIEW_LENGTH = 100; // Około 100 znaków
+  const shouldTruncate = guidelines.length > PREVIEW_LENGTH;
   
-  // Show first 3-4 sentences by default
-  const previewSentences = sentences.slice(0, 4);
-  const remainingSentences = sentences.slice(4);
+  const previewText = shouldTruncate 
+    ? guidelines.substring(0, PREVIEW_LENGTH) + '...' 
+    : guidelines;
   
   return (
     <Card className="bg-blue-50 border-blue-200">
@@ -30,16 +30,12 @@ export function NutritionalGuidelines({ guidelines }: NutritionalGuidelinesProps
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="text-sm text-blue-800 space-y-2">
-          {previewSentences.map((sentence, index) => (
-            <p key={index}>{sentence}</p>
-          ))}
+        <div className="text-sm text-blue-800">
+          <p className="whitespace-pre-wrap">
+            {isExpanded ? guidelines : previewText}
+          </p>
           
-          {isExpanded && remainingSentences.map((sentence, index) => (
-            <p key={`expanded-${index}`}>{sentence}</p>
-          ))}
-          
-          {remainingSentences.length > 0 && (
+          {shouldTruncate && (
             <Button
               variant="ghost"
               size="sm"

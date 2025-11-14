@@ -17,7 +17,8 @@ export async function GET() {
       mealPlans,
       mealPlanDays,
       mealPlanMeals,
-      mealPlanRecipes
+      mealPlanRecipes,
+      appSettings
     ] = await Promise.all([
       prisma.product.findMany(),
       prisma.transaction.findMany(),
@@ -27,7 +28,8 @@ export async function GET() {
       prisma.mealPlan.findMany(),
       prisma.mealPlanDay.findMany(),
       prisma.mealPlanMeal.findMany(),
-      prisma.mealPlanRecipe.findMany()
+      prisma.mealPlanRecipe.findMany(),
+      prisma.appSettings.findMany()
     ])
 
     // Przygotuj dane do eksportu
@@ -138,6 +140,17 @@ export async function GET() {
           servings: mpr.servings,
           order: mpr.order,
           createdAt: mpr.createdAt.toISOString()
+        })),
+        appSettings: appSettings.map(settings => ({
+          id: settings.id,
+          enabledMeals: settings.enabledMeals,
+          includeInCalories: settings.includeInCalories,
+          exportForParents: settings.exportForParents,
+          exportForSanepid: settings.exportForSanepid,
+          customMeals: settings.customMeals,
+          nutritionalGuidelines: settings.nutritionalGuidelines,
+          createdAt: settings.createdAt.toISOString(),
+          updatedAt: settings.updatedAt.toISOString()
         }))
       }
     }
