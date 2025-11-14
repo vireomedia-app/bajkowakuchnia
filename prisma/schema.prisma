@@ -1,7 +1,6 @@
 generator client {
     provider = "prisma-client-js"
     binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
-    output = "../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -14,6 +13,7 @@ model Product {
   name          String        @unique
   unit          String        // kg, szt, l, opak, inne
   currentStock  Float         @default(0)
+  barcode       String?       @unique // Kod kreskowy produktu
   
   // Wartości odżywcze (na 100g)
   manufacturer  String?       // Nazwa producenta
@@ -46,6 +46,7 @@ model Transaction {
   document   String
   type       TransactionType
   quantity   Float
+  loss       Float?      // Zakładana strata (np. obierki)
   balance    Float
   createdAt  DateTime    @default(now())
   
@@ -231,6 +232,26 @@ model User {
   passwordResets PasswordResetToken[]
 
   @@map("users")
+}
+
+// Ustawienia aplikacji - konfiguracja posiłków
+model AppSettings {
+  id                    String   @id @default(cuid())
+  // Konfiguracja posiłków - które są wliczane do kaloryczności (zachowane dla kompatybilności wstecznej)
+  enabledMeals          MealType[] @default([BREAKFAST, SECOND_BREAKFAST, LUNCH, FIRST_SNACK])
+  
+  // Nowa konfiguracja posiłków
+  includeInCalories     MealType[] @default([BREAKFAST, SECOND_BREAKFAST, LUNCH, FIRST_SNACK])
+  exportForParents      MealType[] @default([BREAKFAST, SECOND_BREAKFAST, LUNCH, FIRST_SNACK])
+  exportForSanepid      MealType[] @default([BREAKFAST, SECOND_BREAKFAST, LUNCH, FIRST_SNACK])
+  
+  // Własne posiłki (JSON z definicjami custom meals)
+  customMeals           Json?      @default("[]")
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("app_settings")
 }
 
 // Token resetowania hasła

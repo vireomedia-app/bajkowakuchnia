@@ -15,14 +15,16 @@ interface AddTransactionModalProps {
   isOpen: boolean
   onClose: () => void
   productId: string
+  productUnit: string
 }
 
-export function AddTransactionModal({ isOpen, onClose, productId }: AddTransactionModalProps) {
+export function AddTransactionModal({ isOpen, onClose, productId, productUnit }: AddTransactionModalProps) {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     document: '',
     type: 'INCOME' as 'INCOME' | 'OUTCOME',
-    quantity: '0'
+    quantity: '0',
+    loss: '0'
   })
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -73,7 +75,8 @@ export function AddTransactionModal({ isOpen, onClose, productId }: AddTransacti
           date: formData.date,
           document: formData.document?.trim() || '',
           type: formData.type,
-          quantity: parseFloat(formData.quantity)
+          quantity: parseFloat(formData.quantity),
+          loss: parseFloat(formData.loss) || 0
         }),
       })
       
@@ -91,7 +94,8 @@ export function AddTransactionModal({ isOpen, onClose, productId }: AddTransacti
         date: new Date().toISOString().split('T')[0],
         document: '',
         type: 'INCOME',
-        quantity: '0'
+        quantity: '0',
+        loss: '0'
       })
       setErrors({})
       setSubmitAttempts(0)
@@ -113,7 +117,8 @@ export function AddTransactionModal({ isOpen, onClose, productId }: AddTransacti
         date: new Date().toISOString().split('T')[0],
         document: '',
         type: 'INCOME',
-        quantity: '0'
+        quantity: '0',
+        loss: '0'
       })
       setErrors({})
       setSubmitAttempts(0)
@@ -199,11 +204,13 @@ export function AddTransactionModal({ isOpen, onClose, productId }: AddTransacti
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="quantity">Ilość</Label>
+            <Label htmlFor="quantity">
+              Ilość ({productUnit})
+            </Label>
             <Input
               id="quantity"
               type="number"
-              step="0.5"
+              step="0.00001"
               min="0"
               placeholder="0.00"
               value={formData.quantity}
@@ -211,6 +218,9 @@ export function AddTransactionModal({ isOpen, onClose, productId }: AddTransacti
               className={errors.quantity ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}
               disabled={isLoading}
             />
+            <p className="text-xs text-gray-500">
+              Podaj ilość w {productUnit === 'kg' ? 'kilogramach' : productUnit === 'g' ? 'gramach' : productUnit === 'l' ? 'litrach' : productUnit === 'ml' ? 'mililitrach' : productUnit === 'szt' ? 'sztukach' : 'jednostkach'}
+            </p>
             {errors.quantity && (
               <p className="text-sm text-red-600 flex items-center space-x-1">
                 <AlertCircle className="w-4 h-4" />
@@ -218,6 +228,29 @@ export function AddTransactionModal({ isOpen, onClose, productId }: AddTransacti
               </p>
             )}
           </div>
+          
+          {/* Pole straty - tylko dla rozchodów */}
+          {formData.type === 'OUTCOME' && (
+            <div className="space-y-2">
+              <Label htmlFor="loss" className="flex items-center space-x-2">
+                <span>Zakładana strata (opcjonalnie)</span>
+                <span className="text-xs text-gray-500">(np. obierki)</span>
+              </Label>
+              <Input
+                id="loss"
+                type="number"
+                step="0.00001"
+                min="0"
+                placeholder="0.00"
+                value={formData.loss}
+                onChange={(e) => setFormData({ ...formData, loss: e.target.value })}
+                disabled={isLoading}
+              />
+              <p className="text-xs text-gray-500">
+                Podaj ewentualną stratę (np. 0,5 kg obierek z 10 kg ziemniaków)
+              </p>
+            </div>
+          )}
           
           <div className="flex space-x-3 pt-4">
             <Button

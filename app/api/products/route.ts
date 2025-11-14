@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createProduct, getProducts } from '@/lib/db-utils'
 import { createBackup, cleanupOldBackups } from '@/lib/backup-utils'
+import { prisma } from '@/lib/db'
 import { z } from 'zod'
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,7 @@ const createProductSchema = z.object({
   name: z.string().min(1, 'Nazwa produktu jest wymagana'),
   unit: z.string().min(1, 'Jednostka miary jest wymagana'),
   initialStock: z.number().min(0, 'Stan początkowy nie może być ujemny'),
+  barcode: z.string().nullable().optional(),
   manufacturer: z.string().nullable().optional(),
   calories: z.number().nullable().optional(),
   salt: z.number().nullable().optional(),
@@ -49,6 +51,32 @@ export async function POST(request: NextRequest) {
     // Validate input
     const validatedData = createProductSchema.parse(body)
     
+    // Clean barcode: convert empty string to null, trim whitespace
+    if (validatedData.barcode !== null && validatedData.barcode !== undefined) {
+      const cleanedBarcode = validatedData.barcode.trim()
+      validatedData.barcode = cleanedBarcode === '' ? null : cleanedBarcode
+    }
+    
+    // Check for duplicate barcode using raw SQL (to avoid TypeScript issues)
+    if (validatedData.barcode) {
+      const existingProducts = await prisma.$queryRaw<Array<{ id: string; name: string; barcode: string }>>`
+        SELECT id, name, barcode 
+        FROM "products" 
+        WHERE barcode = ${validatedData.barcode}
+        LIMIT 1
+      `
+      
+      if (existingProducts && existingProducts.length > 0) {
+        return NextResponse.json(
+          { 
+            error: `Produkt z kodem kreskowym "${validatedData.barcode}" już istnieje w bazie: "${existingProducts[0].name}"`,
+            existingProduct: existingProducts[0]
+          },
+          { status: 409 }
+        )
+      }
+    }
+    
     // Create backup before making changes
     await createBackup('Przed dodaniem produktu')
     await cleanupOldBackups(50)
@@ -58,14 +86,34 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json(product, { status: 201 })
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating product:', error)
+    console.error('Error code:', error.code)
+    console.error('Error meta:', error.meta)
+    console.error('Error message:', error.message)
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Nieprawidłowe dane', details: error.errors },
         { status: 400 }
       )
+    }
+    
+    // Handle Prisma unique constraint violations (P2002)
+    if (error.code === 'P2002') {
+      const target = error.meta?.target || []
+      if (target.includes('barcode')) {
+        return NextResponse.json(
+          { error: 'Produkt z tym kodem kreskowym już istnieje w bazie' },
+          { status: 409 }
+        )
+      }
+      if (target.includes('name')) {
+        return NextResponse.json(
+          { error: 'Produkt o tej nazwie już istnieje' },
+          { status: 409 }
+        )
+      }
     }
     
     if (error instanceof Error && error.message.includes('Unique constraint')) {
@@ -76,7 +124,10 @@ export async function POST(request: NextRequest) {
     }
     
     return NextResponse.json(
-      { error: 'Błąd serwera podczas tworzenia produktu' },
+      { 
+        error: 'Błąd serwera podczas tworzenia produktu',
+        details: error.message || 'Nieznany błąd'
+      },
       { status: 500 }
     )
   }

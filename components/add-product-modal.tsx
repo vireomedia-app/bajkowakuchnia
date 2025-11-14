@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,13 +13,16 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Checkbox } from '@/components/ui/checkbox'
 import { UNITS } from '@/lib/types'
 import { ALLERGENS } from '@/lib/allergens'
-import { Package, AlertCircle } from 'lucide-react'
+import { Package, AlertCircle, Camera } from 'lucide-react'
 import { toast } from 'sonner'
+import { BarcodeScanner } from './barcode-scanner'
 
 interface AddProductModalProps {
   isOpen: boolean
   onClose: () => void
   initialName?: string
+  initialData?: any
+  onScanNext?: () => void
 }
 
 const UNIT_OPTIONS = [
@@ -31,10 +35,11 @@ const UNIT_OPTIONS = [
   { value: 'inne', label: 'inne' },
 ]
 
-export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProductModalProps) {
+export function AddProductModal({ isOpen, onClose, initialName = '', initialData, onScanNext }: AddProductModalProps) {
   const [formData, setFormData] = useState({
     name: initialName,
     unit: 'szt' as typeof UNITS[number],
+    barcode: '',
     manufacturer: '',
     initialStock: '0',
     calories: '',
@@ -51,6 +56,9 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
   })
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isScannerOpen, setIsScannerOpen] = useState(false)
+  const [fromScanner, setFromScanner] = useState(false)
+  const [showScanNextDialog, setShowScanNextDialog] = useState(false)
   const router = useRouter()
 
   // Update initial name when prop changes
@@ -59,6 +67,38 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
       setFormData(prev => ({ ...prev, name: initialName }))
     }
   }, [initialName])
+
+  // Update all data when initialData prop changes
+  useEffect(() => {
+    if (initialData) {
+      setFormData(prev => ({
+        ...prev,
+        name: initialData.name || prev.name,
+        barcode: initialData.barcode || prev.barcode,
+        manufacturer: initialData.manufacturer || prev.manufacturer,
+        calories: initialData.calories?.toString() || prev.calories,
+        salt: initialData.salt?.toString() || prev.salt,
+        protein: initialData.protein?.toString() || prev.protein,
+        fat: initialData.fat?.toString() || prev.fat,
+        saturatedFat: initialData.saturatedFat?.toString() || prev.saturatedFat,
+        carbohydrates: initialData.carbohydrates?.toString() || prev.carbohydrates,
+        sugars: initialData.sugars?.toString() || prev.sugars,
+        calcium: initialData.calcium?.toString() || prev.calcium,
+        iron: initialData.iron?.toString() || prev.iron,
+        vitaminC: initialData.vitaminC?.toString() || prev.vitaminC,
+        allergens: initialData.allergens?.length > 0 ? initialData.allergens : prev.allergens,
+      }))
+      
+      // Oznacz że dane pochodzą ze skanera
+      if (initialData.barcode) {
+        setFromScanner(true)
+      }
+      
+      if (initialData.name) {
+        toast.success('Dane produktu zostały załadowane ze skanera. Sprawdź i dostosuj przed zapisaniem.')
+      }
+    }
+  }, [initialData])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -89,6 +129,33 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
     })
   }
 
+  const handleScanSuccess = (productData: any) => {
+    setFormData(prev => ({
+      ...prev,
+      name: productData.name || prev.name,
+      barcode: productData.barcode || prev.barcode,
+      manufacturer: productData.manufacturer || prev.manufacturer,
+      calories: productData.calories?.toString() || prev.calories,
+      salt: productData.salt?.toString() || prev.salt,
+      protein: productData.protein?.toString() || prev.protein,
+      fat: productData.fat?.toString() || prev.fat,
+      saturatedFat: productData.saturatedFat?.toString() || prev.saturatedFat,
+      carbohydrates: productData.carbohydrates?.toString() || prev.carbohydrates,
+      sugars: productData.sugars?.toString() || prev.sugars,
+      calcium: productData.calcium?.toString() || prev.calcium,
+      iron: productData.iron?.toString() || prev.iron,
+      vitaminC: productData.vitaminC?.toString() || prev.vitaminC,
+      allergens: productData.allergens?.length > 0 ? productData.allergens : prev.allergens,
+    }))
+    
+    // Oznacz że dane pochodzą ze skanera
+    if (productData.barcode) {
+      setFromScanner(true)
+    }
+    
+    toast.success('Dane produktu zostały uzupełnione. Sprawdź i dostosuj je przed zapisaniem.')
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -102,6 +169,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
       const submitData = {
         name: formData.name.trim(),
         unit: formData.unit,
+        barcode: formData.barcode.trim() || null,
         manufacturer: formData.manufacturer || null,
         initialStock: parseFloat(formData.initialStock),
         calories: formData.calories ? parseFloat(formData.calories) : null,
@@ -127,6 +195,16 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
       
       if (!response.ok) {
         const error = await response.json()
+        
+        // Obsłuż duplikat (produkt z tym kodem już istnieje)
+        if (response.status === 409 && error.existingProduct) {
+          toast.error(
+            `${error.error}\n\nProdukt: ${error.existingProduct.name} (${error.existingProduct.unit})\nStan: ${error.existingProduct.currentStock}`,
+            { duration: 5000 }
+          )
+          return
+        }
+        
         throw new Error(error.error || 'Błąd podczas dodawania produktu')
       }
       
@@ -143,6 +221,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
       setFormData({
         name: '',
         unit: 'szt' as typeof UNITS[number],
+        barcode: '',
         manufacturer: '',
         initialStock: '0',
         calories: '',
@@ -159,7 +238,14 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
       })
       setErrors({})
       
-      onClose()
+      // Jeśli produkt był skanowany, zapytaj czy chce skanować kolejny
+      if (fromScanner) {
+        setShowScanNextDialog(true)
+        setFromScanner(false)
+      } else {
+        onClose()
+      }
+      
       router.refresh()
       
     } catch (error) {
@@ -169,12 +255,26 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
       setIsLoading(false)
     }
   }
+  
+  const handleScanNextYes = () => {
+    setShowScanNextDialog(false)
+    onClose()
+    if (onScanNext) {
+      onScanNext()
+    }
+  }
+  
+  const handleScanNextNo = () => {
+    setShowScanNextDialog(false)
+    onClose()
+  }
 
   const handleClose = () => {
     if (!isLoading) {
       setFormData({
         name: '',
         unit: 'szt' as typeof UNITS[number],
+        barcode: '',
         manufacturer: '',
         initialStock: '0',
         calories: '',
@@ -190,6 +290,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
         allergens: [],
       })
       setErrors({})
+      setFromScanner(false)
       onClose()
     }
   }
@@ -202,8 +303,18 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
             <Package className="w-5 h-5 text-blue-600" />
             <span>Dodaj nowy produkt</span>
           </DialogTitle>
-          <DialogDescription>
-            Wypełnij podstawowe informacje i wartości odżywcze produktu.
+          <DialogDescription className="flex items-center justify-between">
+            <span>Wypełnij podstawowe informacje i wartości odżywcze produktu lub zeskanuj kod kreskowy.</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsScannerOpen(true)}
+              className="flex items-center space-x-2 border-blue-300 text-blue-700 hover:bg-blue-50 ml-3 flex-shrink-0"
+            >
+              <Camera className="w-5 h-5" />
+              <span className="hidden sm:inline">Skanuj</span>
+            </Button>
           </DialogDescription>
         </DialogHeader>
         
@@ -272,11 +383,25 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
                 </div>
 
                 <div className="grid gap-2">
+                  <Label htmlFor="barcode">Kod kreskowy (opcjonalnie)</Label>
+                  <Input
+                    id="barcode"
+                    value={formData.barcode}
+                    onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                    placeholder="Np. 5901234567890"
+                    disabled={isLoading}
+                  />
+                  <p className="text-xs text-gray-500">
+                    💡 Kod kreskowy jest automatycznie uzupełniany podczas skanowania
+                  </p>
+                </div>
+
+                <div className="grid gap-2">
                   <Label htmlFor="initialStock">Stan początkowy *</Label>
                   <Input
                     id="initialStock"
                     type="number"
-                    step="0.01"
+                    step="0.00001"
                     min="0"
                     placeholder="0.00"
                     value={formData.initialStock}
@@ -305,7 +430,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
                     <Input
                       id="calories"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.calories}
                       onChange={(e) => setFormData({ ...formData, calories: e.target.value })}
@@ -319,7 +444,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
                     <Input
                       id="salt"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.salt}
                       onChange={(e) => setFormData({ ...formData, salt: e.target.value })}
@@ -333,7 +458,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
                     <Input
                       id="protein"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.protein}
                       onChange={(e) => setFormData({ ...formData, protein: e.target.value })}
@@ -347,7 +472,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
                     <Input
                       id="fat"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.fat}
                       onChange={(e) => setFormData({ ...formData, fat: e.target.value })}
@@ -363,7 +488,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
                     <Input
                       id="saturatedFat"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.saturatedFat}
                       onChange={(e) => setFormData({ ...formData, saturatedFat: e.target.value })}
@@ -377,7 +502,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
                     <Input
                       id="carbohydrates"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.carbohydrates}
                       onChange={(e) => setFormData({ ...formData, carbohydrates: e.target.value })}
@@ -393,7 +518,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
                     <Input
                       id="sugars"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.sugars}
                       onChange={(e) => setFormData({ ...formData, sugars: e.target.value })}
@@ -407,7 +532,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
                     <Input
                       id="calcium"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.calcium}
                       onChange={(e) => setFormData({ ...formData, calcium: e.target.value })}
@@ -421,7 +546,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
                     <Input
                       id="iron"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.iron}
                       onChange={(e) => setFormData({ ...formData, iron: e.target.value })}
@@ -435,7 +560,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
                     <Input
                       id="vitaminC"
                       type="number"
-                      step="0.01"
+                      step="0.00001"
                       min="0"
                       value={formData.vitaminC}
                       onChange={(e) => setFormData({ ...formData, vitaminC: e.target.value })}
@@ -516,6 +641,34 @@ export function AddProductModal({ isOpen, onClose, initialName = '' }: AddProduc
           </Button>
         </div>
       </DialogContent>
+
+      <BarcodeScanner
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScanSuccess={handleScanSuccess}
+      />
+      
+      <AlertDialog open={showScanNextDialog} onOpenChange={setShowScanNextDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center space-x-2">
+              <Camera className="w-5 h-5 text-blue-600" />
+              <span>Produkt dodany!</span>
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Czy chcesz zeskanować kolejny produkt?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleScanNextNo}>
+              Nie, zakończ
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleScanNextYes} className="bg-blue-600 hover:bg-blue-700">
+              Tak, skanuj kolejny
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 }

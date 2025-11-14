@@ -8,9 +8,10 @@ import { AddTransactionModal } from './add-transaction-modal'
 
 interface AddTransactionButtonProps {
   productId: string
+  productUnit: string
 }
 
-export function AddTransactionButton({ productId }: AddTransactionButtonProps) {
+export function AddTransactionButton({ productId, productUnit }: AddTransactionButtonProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   return (
@@ -27,6 +28,7 @@ export function AddTransactionButton({ productId }: AddTransactionButtonProps) {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)}
         productId={productId}
+        productUnit={productUnit}
       />
     </>
   )

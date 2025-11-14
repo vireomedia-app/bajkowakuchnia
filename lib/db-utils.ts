@@ -40,6 +40,7 @@ export async function createProduct(data: {
   name: string
   unit: string
   initialStock: number
+  barcode?: string | null
   manufacturer?: string | null
   calories?: number | null
   salt?: number | null
@@ -51,8 +52,16 @@ export async function createProduct(data: {
   calcium?: number | null
   iron?: number | null
   vitaminC?: number | null
+  allergens?: number[]
 }) {
   try {
+    // Clean barcode: ensure empty strings become null
+    let cleanBarcode = data.barcode
+    if (cleanBarcode !== null && cleanBarcode !== undefined) {
+      const trimmed = cleanBarcode.trim()
+      cleanBarcode = trimmed === '' ? null : trimmed
+    }
+    
     return await prisma.$transaction(async (tx) => {
       // Create product
       const product = await tx.product.create({
@@ -60,6 +69,7 @@ export async function createProduct(data: {
           name: data.name,
           unit: data.unit,
           currentStock: data.initialStock,
+          barcode: cleanBarcode,
           manufacturer: data.manufacturer,
           calories: data.calories,
           salt: data.salt,
@@ -71,6 +81,7 @@ export async function createProduct(data: {
           calcium: data.calcium,
           iron: data.iron,
           vitaminC: data.vitaminC,
+          allergens: data.allergens || [],
         }
       })
       
@@ -101,6 +112,7 @@ export async function createTransaction(productId: string, data: {
   document: string
   type: 'INCOME' | 'OUTCOME'
   quantity: number
+  loss?: number
 }) {
   try {
     return await prisma.$transaction(async (tx) => {
@@ -118,7 +130,9 @@ export async function createTransaction(productId: string, data: {
       if (data.type === 'INCOME') {
         newBalance += data.quantity
       } else {
-        newBalance -= data.quantity
+        // Dla rozchodu uwzględnij stratę
+        const totalOutcome = data.quantity + (data.loss || 0)
+        newBalance -= totalOutcome
       }
       
       // Ensure balance doesn't go below 0
@@ -134,6 +148,7 @@ export async function createTransaction(productId: string, data: {
           document: data.document,
           type: data.type,
           quantity: data.quantity,
+          loss: data.loss || 0,
           balance: newBalance
         }
       })
@@ -194,7 +209,9 @@ export async function recalculateBalances(productId: string) {
         if (transaction.type === 'INCOME') {
           runningBalance += transaction.quantity
         } else {
-          runningBalance -= transaction.quantity
+          // Dla rozchodu uwzględnij stratę
+          const totalOutcome = transaction.quantity + (transaction.loss || 0)
+          runningBalance -= totalOutcome
         }
 
         // Update the transaction with the new balance

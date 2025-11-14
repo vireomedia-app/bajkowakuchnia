@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ProductsList } from '@/components/products-list'
 import { AddProductModal } from '@/components/add-product-modal'
+import { BarcodeScanner } from '@/components/barcode-scanner'
 import { ExportButton } from '@/components/export-button'
 import { SearchProducts } from '@/components/search-products'
 import { BackupManager } from '@/components/backup-manager'
 import { LogoutButton } from '@/components/logout-button'
-import { Warehouse, Package, ArrowLeft, Plus } from 'lucide-react'
+import { Warehouse, Package, ArrowLeft, Plus, Camera } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Product } from '@/lib/types'
@@ -22,7 +23,9 @@ interface InventoryPageClientProps {
 export function InventoryPageClient({ products, searchQuery, addProductName }: InventoryPageClientProps) {
   const router = useRouter()
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isScannerOpen, setIsScannerOpen] = useState(false)
   const [initialProductName, setInitialProductName] = useState('')
+  const [scannedProductData, setScannedProductData] = useState<any>(null)
 
   // Auto-open modal when add_product parameter is present
   useEffect(() => {
@@ -37,9 +40,52 @@ export function InventoryPageClient({ products, searchQuery, addProductName }: I
     }
   }, [addProductName])
 
+  // Check for scanned product data from URL parameters
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const openAddProduct = params.get('openAddProduct')
+      const fromScanner = params.get('fromScanner')
+      
+      if (openAddProduct === 'true' && fromScanner === 'true') {
+        // Get scanned product data from sessionStorage
+        const scannedData = sessionStorage.getItem('scannedProduct')
+        if (scannedData) {
+          try {
+            const productData = JSON.parse(scannedData)
+            setScannedProductData(productData)
+            setIsAddModalOpen(true)
+            
+            // Clean up
+            sessionStorage.removeItem('scannedProduct')
+            
+            // Remove parameters from URL
+            const url = new URL(window.location.href)
+            url.searchParams.delete('openAddProduct')
+            url.searchParams.delete('fromScanner')
+            window.history.replaceState({}, '', url.toString())
+          } catch (error) {
+            console.error('Error parsing scanned product data:', error)
+          }
+        }
+      }
+    }
+  }, [])
+
   const handleCloseModal = () => {
     setIsAddModalOpen(false)
     setInitialProductName('')
+    setScannedProductData(null)
+  }
+  
+  const handleScanSuccess = (productData: any) => {
+    setScannedProductData(productData)
+    setIsAddModalOpen(true)
+  }
+  
+  const handleScanNext = () => {
+    // Uruchom skaner ponownie
+    setIsScannerOpen(true)
   }
 
   return (
@@ -69,15 +115,22 @@ export function InventoryPageClient({ products, searchQuery, addProductName }: I
       </div>
 
       {/* Actions */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
+      <div className="flex flex-col sm:flex-row gap-4 justify-between items-stretch sm:items-center">
         <SearchProducts />
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <Button 
+            onClick={() => setIsScannerOpen(true)} 
+            className="gap-2 bg-purple-600 hover:bg-purple-700 whitespace-nowrap order-1 sm:order-1"
+          >
+            <Camera className="w-4 h-4" />
+            Skanuj nowe produkty
+          </Button>
           <Button 
             onClick={() => setIsAddModalOpen(true)} 
-            className="gap-2 bg-blue-600 hover:bg-blue-700"
+            className="gap-2 bg-blue-600 hover:bg-blue-700 whitespace-nowrap order-2 sm:order-2"
           >
             <Plus className="w-4 h-4" />
-            Dodaj nowy produkt
+            Dodaj ręcznie nowy produkt
           </Button>
         </div>
       </div>
@@ -141,6 +194,15 @@ export function InventoryPageClient({ products, searchQuery, addProductName }: I
         isOpen={isAddModalOpen} 
         onClose={handleCloseModal}
         initialName={initialProductName}
+        initialData={scannedProductData}
+        onScanNext={handleScanNext}
+      />
+      
+      {/* Barcode Scanner */}
+      <BarcodeScanner
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScanSuccess={handleScanSuccess}
       />
     </div>
   )
