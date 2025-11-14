@@ -235,7 +235,7 @@ export default function MealPlansList({ initialPlans }: { initialPlans: MealPlan
       // Dodaj zduplikowany plan do listy bez odświeżania strony
       setPlans([...plans, duplicatedPlan]);
       
-      toast.success('Jadłospis zduplikowany');
+      toast.success('Jadłospis zduplikowany, odśwież stronę');
     } catch (error) {
       console.error('Error duplicating meal plan:', error);
       toast.error('Błąd podczas duplikowania jadłospisu');

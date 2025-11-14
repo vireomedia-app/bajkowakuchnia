@@ -132,11 +132,64 @@ export async function GET(
       exportedMealTypes.forEach((mealType) => {
         const meal = day.meals?.find(m => m.mealType === mealType);
         if (meal && meal.recipes && meal.recipes.length > 0) {
-          const recipeNames = meal.recipes
-            .map(mr => mr.recipe?.name || 'Brak nazwy')
-            .filter(name => name) // Usuń puste nazwy
-            .join('\n');
-          row.getCell(columnMapping[mealType]).value = recipeNames || '-';
+          // Zbierz wszystkie alergeny z tego posiłku
+          const allAllergens = new Set<number>();
+          
+          // Buduj rich text dla komórki
+          const richTextParts: any[] = [];
+          
+          meal.recipes.forEach((mr, idx) => {
+            const recipe = mr.recipe;
+            if (!recipe) return;
+            
+            // Nazwa receptury
+            if (idx > 0) richTextParts.push({ text: '\n' });
+            richTextParts.push({ text: recipe.name || 'Brak nazwy', font: { bold: true } });
+            richTextParts.push({ text: '\n' });
+            
+            // Składniki
+            if (recipe.ingredients && recipe.ingredients.length > 0) {
+              const ingredientTexts: any[] = [];
+              
+              recipe.ingredients.forEach((ingredient, ingIdx) => {
+                const product = ingredient.product;
+                if (!product) return;
+                
+                // Sprawdź czy produkt ma alergeny
+                const hasAllergens = product.allergens && product.allergens.length > 0;
+                
+                // Dodaj alergeny do zbioru
+                if (hasAllergens) {
+                  product.allergens.forEach((a: number) => allAllergens.add(a));
+                }
+                
+                // Dodaj przecinek między składnikami
+                if (ingIdx > 0) {
+                  ingredientTexts.push({ text: ', ' });
+                }
+                
+                // Dodaj nazwę składnika (pogrubiony jeśli ma alergeny)
+                ingredientTexts.push({
+                  text: product.name,
+                  font: hasAllergens ? { bold: true } : {}
+                });
+              });
+              
+              richTextParts.push(...ingredientTexts);
+            }
+          });
+          
+          // Dodaj listę alergenów na końcu
+          if (allAllergens.size > 0) {
+            const sortedAllergens = Array.from(allAllergens).sort((a, b) => a - b);
+            richTextParts.push({ text: '\n\n' });
+            richTextParts.push({ text: 'Alergeny: ', font: { italic: true } });
+            richTextParts.push({ text: sortedAllergens.join(', '), font: { italic: true } });
+          }
+          
+          row.getCell(columnMapping[mealType]).value = {
+            richText: richTextParts
+          };
         } else {
           row.getCell(columnMapping[mealType]).value = '-';
         }
@@ -144,26 +197,19 @@ export async function GET(
       
       row.alignment = { vertical: 'top', wrapText: true };
       
-      // Oblicz wysokość wiersza uwzględniając długość tekstu w każdej komórce
+      // Oblicz wysokość wiersza uwzględniając składniki i alergeny
       let maxLines = 1;
       exportedMealTypes.forEach((mt) => {
         const meal = day.meals?.find(m => m.mealType === mt);
         if (meal && meal.recipes && meal.recipes.length > 0) {
-          // Liczba receptur = liczba linii
-          const lines = meal.recipes.length;
-          // Dodatkowo sprawdź długość nazw - długie nazwy mogą się zawijać
-          meal.recipes.forEach(mr => {
-            const recipeName = mr.recipe?.name || '';
-            // Jeśli nazwa jest dłuższa niż 30 znaków, może się zawijać
-            if (recipeName.length > 30) {
-              maxLines = Math.max(maxLines, lines + 1);
-            }
-          });
-          maxLines = Math.max(maxLines, lines);
+          // Każda receptura ma teraz: nazwę (1 linia) + składniki (1+ linii) + alergeny (2 linie)
+          // Szacujemy ~4 linie na recepturę
+          const estimatedLines = meal.recipes.length * 4;
+          maxLines = Math.max(maxLines, estimatedLines);
         }
       });
-      // Ustaw wysokość na podstawie liczby linii (około 20 pikseli na linię + padding)
-      row.height = Math.max(25, maxLines * 20 + 8);
+      // Ustaw wysokość na podstawie liczby linii (około 18 pikseli na linię + padding)
+      row.height = Math.max(30, maxLines * 18 + 10);
       
       currentRow++;
     }
