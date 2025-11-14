@@ -116,13 +116,35 @@ export default function SettingsPage() {
     setShowGuidelinesDialog(true)
   }
 
-  const handleSaveGuidelines = () => {
-    setSettings(prev => ({
-      ...prev,
-      nutritionalGuidelines: guidelinesText
-    }))
-    setShowGuidelinesDialog(false)
-    toast.success('Wytyczne żywieniowe zostały zaktualizowane')
+  const handleSaveGuidelines = async () => {
+    try {
+      // Zapisz wytyczne do state
+      const updatedSettings = {
+        ...settings,
+        nutritionalGuidelines: guidelinesText
+      }
+      
+      // Wyślij do API
+      const response = await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedSettings),
+      })
+
+      if (!response.ok) {
+        throw new Error('Nie udało się zapisać wytycznych')
+      }
+
+      // Zaktualizuj lokalny state
+      setSettings(updatedSettings)
+      setShowGuidelinesDialog(false)
+      toast.success('Wytyczne żywieniowe zostały zapisane!')
+    } catch (error) {
+      console.error('Error saving guidelines:', error)
+      toast.error('Błąd podczas zapisywania wytycznych')
+    }
   }
 
   const handleAddCustomMeal = () => {

@@ -80,7 +80,18 @@ export async function GET(
     summarySheet.getRow(1).height = 30;
     
     // Informacje o jadłospisie
-    summarySheet.getCell('A2').value = `Tydzień: ${mealPlan.weekNumber || '-'}`;
+    let dateRangeInfo = '';
+    if (mealPlan.startDate && mealPlan.endDate) {
+      const startDateStr = new Date(mealPlan.startDate).toLocaleDateString('pl-PL');
+      const endDateStr = new Date(mealPlan.endDate).toLocaleDateString('pl-PL');
+      dateRangeInfo = `Zakres dat: ${startDateStr} - ${endDateStr}`;
+    } else if (mealPlan.weekNumber) {
+      dateRangeInfo = `Tydzień: ${mealPlan.weekNumber}`;
+    } else {
+      dateRangeInfo = 'Zakres dat: -';
+    }
+    
+    summarySheet.getCell('A2').value = dateRangeInfo;
     summarySheet.getCell('C2').value = `Sezon: ${
       mealPlan.season === 'SPRING' ? 'Wiosna' :
       mealPlan.season === 'SUMMER' ? 'Lato' :
@@ -93,16 +104,31 @@ export async function GET(
       summarySheet.mergeCells('A3:F3');
     }
     
-    // Nagłówki tabeli
+    // Nagłówki tabeli - TYLKO posiłki zaznaczone w exportForSanepid
+    const ALL_MEAL_TYPES = ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK', 'SECOND_SNACK'];
+    const exportedMealTypes = ALL_MEAL_TYPES.filter(mt => exportForSanepid.includes(mt as any));
+    
+    // Sprawdź czy są jakieś posiłki do eksportu
+    if (exportedMealTypes.length === 0) {
+      return NextResponse.json(
+        { error: 'Brak posiłków zaznaczonych do eksportu dla Sanepidu w ustawieniach' },
+        { status: 400 }
+      );
+    }
+    
     const headerRow = summarySheet.getRow(5);
-    headerRow.values = ['Dzień tygodnia', 'Śniadanie', 'II śniadanie', 'Obiad', 'Podwieczorek', 'II podwieczorek'];
+    const headerValues = ['Dzień tygodnia'];
+    exportedMealTypes.forEach(mt => {
+      headerValues.push(MEAL_TYPE_LABELS[mt as any] || mt);
+    });
+    headerRow.values = headerValues;
     headerRow.font = { bold: true };
     headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
     headerRow.height = 25;
     
-    // Ustaw szerokość kolumn
+    // Ustaw szerokość kolumn - TYLKO dla wyeksportowanych posiłków
     summarySheet.getColumn(1).width = 20;
-    for (let i = 2; i <= 6; i++) {
+    for (let i = 2; i <= exportedMealTypes.length + 1; i++) {
       summarySheet.getColumn(i).width = 25;
     }
     
@@ -112,23 +138,29 @@ export async function GET(
       const row = summarySheet.getRow(currentRow);
       row.getCell(1).value = DAY_OF_WEEK_LABELS[day.dayOfWeek] || `Dzień ${day.dayOfWeek}`;
       
-      // Dla każdego typu posiłku
-      const mealTypes = ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK', 'SECOND_SNACK'];
-      mealTypes.forEach((mealType, index) => {
+      // Przygotuj mapowanie indeksów kolumn dla wyeksportowanych posiłków
+      const columnMapping: Record<string, number> = {};
+      let columnIndex = 2;
+      exportedMealTypes.forEach(mt => {
+        columnMapping[mt] = columnIndex++;
+      });
+      
+      // Wypełnij TYLKO wyeksportowane typy posiłków
+      exportedMealTypes.forEach((mealType) => {
         const meal = day.meals?.find(m => m.mealType === mealType);
         if (meal && meal.recipes && meal.recipes.length > 0) {
           const recipeNames = meal.recipes
             .map(mr => mr.recipe?.name || 'Brak nazwy')
             .filter(name => name) // Usuń puste nazwy
             .join('\n');
-          row.getCell(index + 2).value = recipeNames || '-';
+          row.getCell(columnMapping[mealType]).value = recipeNames || '-';
         } else {
-          row.getCell(index + 2).value = '-';
+          row.getCell(columnMapping[mealType]).value = '-';
         }
       });
       
       row.alignment = { vertical: 'top', wrapText: true };
-      row.height = Math.max(40, Math.min(...mealTypes.map((mt, idx) => {
+      row.height = Math.max(40, Math.min(...exportedMealTypes.map((mt) => {
         const meal = day.meals?.find(m => m.mealType === mt);
         return meal?.recipes?.length || 0;
       })) * 15 + 10);
@@ -136,9 +168,10 @@ export async function GET(
       currentRow++;
     }
     
-    // Zastosuj obramowanie do tabeli
+    // Zastosuj obramowanie do tabeli - TYLKO dla wyeksportowanych kolumn
+    const totalColumns = exportedMealTypes.length + 1;
     for (let row = 5; row < currentRow; row++) {
-      for (let col = 1; col <= 6; col++) {
+      for (let col = 1; col <= totalColumns; col++) {
         const cell = summarySheet.getRow(row).getCell(col);
         cell.border = {
           top: { style: 'thin' },
@@ -395,10 +428,17 @@ export async function GET(
     // Wygeneruj plik Excel
     const buffer = await workbook.xlsx.writeBuffer();
     
-    // Utwórz nazwę pliku
-    const fileName = `Jadlospis_${mealPlan.name.replace(/\s+/g, '_')}_${
-      mealPlan.weekNumber ? `Tydzien_${mealPlan.weekNumber}` : ''
-    }.xlsx`;
+    // Utwórz nazwę pliku z zakresem dat
+    let fileNameSuffix = '';
+    if (mealPlan.startDate && mealPlan.endDate) {
+      const startDateStr = new Date(mealPlan.startDate).toLocaleDateString('pl-PL').replace(/\./g, '-');
+      const endDateStr = new Date(mealPlan.endDate).toLocaleDateString('pl-PL').replace(/\./g, '-');
+      fileNameSuffix = `${startDateStr}_${endDateStr}`;
+    } else if (mealPlan.weekNumber) {
+      fileNameSuffix = `Tydzien_${mealPlan.weekNumber}`;
+    }
+    
+    const fileName = `Jadlospis_${mealPlan.name.replace(/\s+/g, '_')}_${fileNameSuffix}.xlsx`;
     
     // Zwróć plik
     return new NextResponse(buffer, {
