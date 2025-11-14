@@ -97,11 +97,9 @@ export async function GET(
     // Informacje o jadłospisie
     let dateRangeInfo = '';
     if (mealPlan.startDate && mealPlan.endDate) {
-      // Użyj lokalnej daty bez konwersji timezone
-      const startDate = new Date(mealPlan.startDate);
-      const endDate = new Date(mealPlan.endDate);
-      const startDateStr = `${String(startDate.getUTCDate()).padStart(2, '0')}.${String(startDate.getUTCMonth() + 1).padStart(2, '0')}.${startDate.getUTCFullYear()}`;
-      const endDateStr = `${String(endDate.getUTCDate()).padStart(2, '0')}.${String(endDate.getUTCMonth() + 1).padStart(2, '0')}.${endDate.getUTCFullYear()}`;
+      // Formatuj daty tak samo jak w tytule pliku
+      const startDateStr = new Date(mealPlan.startDate).toLocaleDateString('pl-PL');
+      const endDateStr = new Date(mealPlan.endDate).toLocaleDateString('pl-PL');
       dateRangeInfo = `Zakres dat: ${startDateStr}-${endDateStr}`;
     } else if (mealPlan.weekNumber) {
       dateRangeInfo = `Tydzień: ${mealPlan.weekNumber}`;
@@ -158,10 +156,13 @@ export async function GET(
       });
       
       row.alignment = { vertical: 'top', wrapText: true };
-      row.height = Math.max(40, Math.min(...exportedMealTypes.map((mt) => {
+      
+      // Oblicz wysokość wiersza na podstawie maksymalnej liczby receptur
+      const maxRecipes = Math.max(...exportedMealTypes.map((mt) => {
         const meal = day.meals?.find(m => m.mealType === mt);
         return meal?.recipes?.length || 0;
-      })) * 15 + 10);
+      }), 1);
+      row.height = Math.max(40, maxRecipes * 18 + 10);
       
       currentRow++;
     }
