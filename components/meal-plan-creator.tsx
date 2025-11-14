@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { NutritionalGuidelines } from '@/components/nutritional-guidelines';
 import { toast } from 'sonner';
 import { CalendarDays, Loader2, CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
@@ -26,7 +25,6 @@ interface MealPlanCreatorProps {
 export function MealPlanCreator({ standards }: MealPlanCreatorProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [guidelines, setGuidelines] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     startDate: undefined as Date | undefined,
@@ -35,22 +33,6 @@ export function MealPlanCreator({ standards }: MealPlanCreatorProps) {
     description: '',
     standardsId: standards[0]?.id || '',
   });
-
-  useEffect(() => {
-    // Fetch nutritional guidelines from settings
-    const fetchGuidelines = async () => {
-      try {
-        const response = await fetch('/api/settings');
-        if (response.ok) {
-          const data = await response.json();
-          setGuidelines(data.nutritionalGuidelines || '');
-        }
-      } catch (error) {
-        console.error('Error fetching guidelines:', error);
-      }
-    };
-    fetchGuidelines();
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,9 +77,6 @@ export function MealPlanCreator({ standards }: MealPlanCreatorProps) {
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
-      {/* Wytyczne żywieniowe */}
-      {guidelines && <NutritionalGuidelines guidelines={guidelines} />}
-      
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
