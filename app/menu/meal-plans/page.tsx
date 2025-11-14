@@ -88,13 +88,8 @@ export default async function MealPlansPage() {
           <h3 className="text-xl font-semibold text-gray-900">Istniejące jadłospisy</h3>
           <div className="grid gap-4">
             {mealPlans.map((plan: any) => {
-              // Formatuj tytuł z zakresem dat
-              let displayTitle = plan.name;
-              if (plan.startDate && plan.endDate) {
-                const startDateStr = new Date(plan.startDate).toLocaleDateString('pl-PL');
-                const endDateStr = new Date(plan.endDate).toLocaleDateString('pl-PL');
-                displayTitle = `${plan.name} - ${startDateStr}-${endDateStr}`;
-              }
+              // Nazwa już zawiera zakres dat (dodany przy tworzeniu/edycji)
+              const displayTitle = plan.name;
               
               return (
               <Link key={plan.id} href={`/menu/meal-plans/${plan.id}`}>

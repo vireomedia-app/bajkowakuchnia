@@ -435,11 +435,6 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
                 <CalendarDays className="w-5 h-5 lg:w-6 lg:h-6 flex-shrink-0" />
                 <span className="truncate">
                   {mealPlan.name}
-                  {(mealPlan.startDate && mealPlan.endDate) && (
-                    <span className="text-base lg:text-xl text-muted-foreground ml-2">
-                      - {new Date(mealPlan.startDate).toLocaleDateString('pl-PL')}-{new Date(mealPlan.endDate).toLocaleDateString('pl-PL')}
-                    </span>
-                  )}
                 </span>
               </CardTitle>
               {mealPlan.description && (
