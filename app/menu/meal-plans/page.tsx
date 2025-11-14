@@ -1,9 +1,8 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, CalendarDays, PlusCircle, AlertCircle, Construction } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { ArrowLeft, CalendarDays, PlusCircle } from 'lucide-react';
 import { prisma } from '@/lib/db';
+import MealPlansList from '@/components/meal-plans-list';
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +35,10 @@ async function getMealPlans() {
           orderBy: { dayOfWeek: 'asc' },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [
+        { displayOrder: 'asc' },
+        { createdAt: 'desc' }
+      ],
     });
     
     return mealPlans;
@@ -83,44 +85,7 @@ export default async function MealPlansPage() {
 
 
       {/* Meal Plans List (if any) */}
-      {mealPlans.length > 0 && (
-        <div className="max-w-4xl mx-auto space-y-4">
-          <h3 className="text-xl font-semibold text-gray-900">Istniejące jadłospisy</h3>
-          <div className="grid gap-4">
-            {mealPlans.map((plan: any) => {
-              // Nazwa już zawiera zakres dat (dodany przy tworzeniu/edycji)
-              const displayTitle = plan.name;
-              
-              return (
-              <Link key={plan.id} href={`/menu/meal-plans/${plan.id}`}>
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                  <CardHeader>
-                    <div className="flex items-center gap-4">
-                      <CardTitle className="text-gray-900 flex-1">{displayTitle}</CardTitle>
-                    </div>
-                    {plan.description && (
-                      <CardDescription>{plan.description}</CardDescription>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                      {plan.season && (
-                        <span>
-                          Sezon: {plan.season === 'SPRING' ? 'Wiosna' : 
-                                 plan.season === 'SUMMER' ? 'Lato' : 
-                                 plan.season === 'AUTUMN' ? 'Jesień' : 'Zima'}
-                        </span>
-                      )}
-                      <span>{plan.days?.length || 0} dni</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      <MealPlansList initialPlans={mealPlans} />
 
       {mealPlans.length === 0 && (
         <div className="text-center py-12">

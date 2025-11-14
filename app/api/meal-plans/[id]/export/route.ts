@@ -373,14 +373,14 @@ export async function GET(
         detailsSheet.mergeCells(`A${detailsRow}:H${detailsRow}`);
         detailsRow++;
         
-        // Wiersz z liczbą dzieci
+        // Wiersz z liczbą dzieci - przesunięty o jedną komórkę w prawo
         const childrenRow = detailsSheet.getRow(detailsRow);
-        childrenRow.getCell(1).value = 'Liczba dzieci:';
-        childrenRow.getCell(1).font = { bold: true };
-        childrenRow.getCell(1).alignment = { horizontal: 'right', vertical: 'middle' };
+        childrenRow.getCell(2).value = 'Ilość dzieci tego dnia:';
+        childrenRow.getCell(2).font = { bold: true };
+        childrenRow.getCell(2).alignment = { horizontal: 'right', vertical: 'middle' };
         
-        // Komórka do wpisania liczby dzieci (edytowalna)
-        const childrenCountCell = childrenRow.getCell(2);
+        // Komórka do wpisania liczby dzieci (edytowalna) - przesunięta o jedną komórkę w prawo
+        const childrenCountCell = childrenRow.getCell(3);
         childrenCountCell.value = '';
         childrenCountCell.fill = {
           type: 'pattern',
@@ -395,7 +395,7 @@ export async function GET(
         };
         
         // Zapamiętaj adres komórki z liczbą dzieci dla tego dnia
-        childrenCountCells[day.dayOfWeek] = `B${detailsRow}`;
+        childrenCountCells[day.dayOfWeek] = `C${detailsRow}`;
         detailsRow++;
         
         // Nagłówki kolumn dla składników

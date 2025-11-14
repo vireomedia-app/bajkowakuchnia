@@ -152,6 +152,7 @@ model MealPlan {
   season                Season?             // Sezon
   description           String?             // Dodatkowy opis
   standardsId           String?             @map("standards_id") // ID norm żywieniowych
+  displayOrder          Int                 @default(0) @map("display_order") // Kolejność wyświetlania
   
   createdAt             DateTime            @default(now()) @map("created_at")
   updatedAt             DateTime            @updatedAt @map("updated_at")
@@ -164,6 +165,7 @@ model MealPlan {
   @@index([season])
   @@index([startDate])
   @@index([endDate])
+  @@index([displayOrder])
 }
 
 enum Season {
