@@ -87,23 +87,28 @@ export default async function MealPlansPage() {
         <div className="max-w-4xl mx-auto space-y-4">
           <h3 className="text-xl font-semibold text-gray-900">Istniejące jadłospisy</h3>
           <div className="grid gap-4">
-            {mealPlans.map((plan: any) => (
+            {mealPlans.map((plan: any) => {
+              // Formatuj tytuł z zakresem dat
+              let displayTitle = plan.name;
+              if (plan.startDate && plan.endDate) {
+                const startDateStr = new Date(plan.startDate).toLocaleDateString('pl-PL');
+                const endDateStr = new Date(plan.endDate).toLocaleDateString('pl-PL');
+                displayTitle = `${plan.name} - ${startDateStr}-${endDateStr}`;
+              }
+              
+              return (
               <Link key={plan.id} href={`/menu/meal-plans/${plan.id}`}>
                 <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                   <CardHeader>
-                    <CardTitle className="text-gray-900">{plan.name}</CardTitle>
+                    <div className="flex items-center gap-4">
+                      <CardTitle className="text-gray-900 flex-1">{displayTitle}</CardTitle>
+                    </div>
                     {plan.description && (
                       <CardDescription>{plan.description}</CardDescription>
                     )}
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                      {plan.weekNumber && (
-                        <span className="flex items-center gap-1">
-                          <CalendarDays className="w-4 h-4" />
-                          Tydzień {plan.weekNumber}
-                        </span>
-                      )}
                       {plan.season && (
                         <span>
                           Sezon: {plan.season === 'SPRING' ? 'Wiosna' : 
@@ -116,7 +121,8 @@ export default async function MealPlansPage() {
                   </CardContent>
                 </Card>
               </Link>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

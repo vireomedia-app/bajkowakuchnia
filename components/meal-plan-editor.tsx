@@ -412,17 +412,20 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
             <div className="flex-1 min-w-0">
               <CardTitle className="text-lg lg:text-2xl flex items-center gap-2">
                 <CalendarDays className="w-5 h-5 lg:w-6 lg:h-6 flex-shrink-0" />
-                <span className="truncate">{mealPlan.name}</span>
+                <span className="truncate">
+                  {mealPlan.name}
+                  {(mealPlan.startDate && mealPlan.endDate) && (
+                    <span className="text-base lg:text-xl text-muted-foreground ml-2">
+                      - {new Date(mealPlan.startDate).toLocaleDateString('pl-PL')}-{new Date(mealPlan.endDate).toLocaleDateString('pl-PL')}
+                    </span>
+                  )}
+                </span>
               </CardTitle>
               {mealPlan.description && (
                 <CardDescription className="mt-2 text-sm">{mealPlan.description}</CardDescription>
               )}
               <div className="flex gap-2 lg:gap-3 mt-2 lg:mt-3 flex-wrap">
-                {(mealPlan.startDate && mealPlan.endDate) && (
-                  <Badge variant="outline" className="text-xs">
-                    {new Date(mealPlan.startDate).toLocaleDateString('pl-PL')} - {new Date(mealPlan.endDate).toLocaleDateString('pl-PL')}
-                  </Badge>
-                )}
+                {/* Zakres dat już jest w tytule */}
                 {mealPlan.season && (
                   <Badge variant="outline" className="text-xs">
                     {mealPlan.season === 'SPRING' ? 'Wiosna' :
