@@ -94,22 +94,7 @@ export async function GET(
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     summarySheet.getRow(1).height = 30;
     
-    // Informacje o jadłospisie - formatowanie dat identyczne jak w nazwie pliku
-    let dateRangeInfo = '';
-    if (mealPlan.startDate && mealPlan.endDate) {
-      // Używamy UTC aby uniknąć przesunięcia czasowego
-      const startDate = new Date(mealPlan.startDate);
-      const endDate = new Date(mealPlan.endDate);
-      const startDateStr = `${String(startDate.getUTCDate()).padStart(2, '0')}.${String(startDate.getUTCMonth() + 1).padStart(2, '0')}.${startDate.getUTCFullYear()}`;
-      const endDateStr = `${String(endDate.getUTCDate()).padStart(2, '0')}.${String(endDate.getUTCMonth() + 1).padStart(2, '0')}.${endDate.getUTCFullYear()}`;
-      dateRangeInfo = `Zakres dat: ${startDateStr}-${endDateStr}`;
-    } else if (mealPlan.weekNumber) {
-      dateRangeInfo = `Tydzień: ${mealPlan.weekNumber}`;
-    } else {
-      dateRangeInfo = 'Zakres dat: -';
-    }
-    
-    summarySheet.getCell('A2').value = dateRangeInfo;
+    // Informacje o jadłospisie - usunięto zakres dat z A2
     summarySheet.getCell('C2').value = `Sezon: ${
       mealPlan.season === 'SPRING' ? 'Wiosna' :
       mealPlan.season === 'SUMMER' ? 'Lato' :
@@ -360,7 +345,7 @@ export async function GET(
     const detailsSheet = workbook.addWorksheet('Szczegóły receptur');
     
     // Tytuł
-    detailsSheet.mergeCells('A1:F1');
+    detailsSheet.mergeCells('A1:H1');
     const detailsTitleCell = detailsSheet.getCell('A1');
     detailsTitleCell.value = 'Szczegóły receptur - ' + mealPlan.name;
     detailsTitleCell.font = { size: 16, bold: true };
@@ -370,6 +355,9 @@ export async function GET(
     // Szerokość kolumn zostanie ustawiona automatycznie po wypełnieniu danych
     
     let detailsRow = 3;
+    
+    // Słownik do przechowywania adresów komórek z liczbą dzieci dla każdego dnia
+    const childrenCountCells: { [key: number]: string } = {};
     
     for (const day of mealPlan.days) {
       try {
@@ -382,12 +370,37 @@ export async function GET(
           pattern: 'solid',
           fgColor: { argb: 'FFE0E0E0' },
         };
-        detailsSheet.mergeCells(`A${detailsRow}:F${detailsRow}`);
+        detailsSheet.mergeCells(`A${detailsRow}:H${detailsRow}`);
+        detailsRow++;
+        
+        // Wiersz z liczbą dzieci
+        const childrenRow = detailsSheet.getRow(detailsRow);
+        childrenRow.getCell(1).value = 'Liczba dzieci:';
+        childrenRow.getCell(1).font = { bold: true };
+        childrenRow.getCell(1).alignment = { horizontal: 'right', vertical: 'middle' };
+        
+        // Komórka do wpisania liczby dzieci (edytowalna)
+        const childrenCountCell = childrenRow.getCell(2);
+        childrenCountCell.value = '';
+        childrenCountCell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFFF00' }, // Żółte tło dla wyróżnienia
+        };
+        childrenCountCell.border = {
+          top: { style: 'medium' },
+          left: { style: 'medium' },
+          bottom: { style: 'medium' },
+          right: { style: 'medium' },
+        };
+        
+        // Zapamiętaj adres komórki z liczbą dzieci dla tego dnia
+        childrenCountCells[day.dayOfWeek] = `B${detailsRow}`;
         detailsRow++;
         
         // Nagłówki kolumn dla składników
         const headerRow = detailsSheet.getRow(detailsRow);
-        headerRow.values = ['', 'Posiłek', 'Receptura', 'Składnik', 'Ilość', 'Jednostka'];
+        headerRow.values = ['', 'Posiłek', 'Receptura', 'Składnik', 'Ilość na porcję', 'Jednostka', 'Liczba dzieci', 'Całkowita ilość'];
         headerRow.font = { bold: true };
         headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
         headerRow.fill = {
@@ -432,6 +445,17 @@ export async function GET(
                 ingredientRow.getCell(4).value = ingredient.product?.name || 'Nieznany składnik';
                 ingredientRow.getCell(5).value = ingredient.quantity || 0;
                 ingredientRow.getCell(6).value = ingredient.unit || '';
+                
+                // Kolumna G: Liczba dzieci (odniesienie do komórki z liczbą dzieci dla tego dnia)
+                const childrenCellRef = childrenCountCells[day.dayOfWeek];
+                ingredientRow.getCell(7).value = { formula: `=${childrenCellRef}` };
+                ingredientRow.getCell(7).alignment = { horizontal: 'center', vertical: 'middle' };
+                
+                // Kolumna H: Całkowita ilość (Ilość na porcję * Liczba dzieci)
+                ingredientRow.getCell(8).value = { formula: `=E${detailsRow}*G${detailsRow}` };
+                ingredientRow.getCell(8).numFmt = '0.00'; // Format liczby z 2 miejscami po przecinku
+                ingredientRow.getCell(8).alignment = { horizontal: 'right', vertical: 'middle' };
+                
                 detailsRow++;
               }
             } else {
@@ -458,9 +482,9 @@ export async function GET(
     
     // Zastosuj obramowanie do wszystkich komórek z danymi
     for (let row = 3; row < detailsRow; row++) {
-      for (let col = 1; col <= 6; col++) {
+      for (let col = 1; col <= 8; col++) {
         const cell = detailsSheet.getRow(row).getCell(col);
-        if (cell.value) {
+        if (cell.value || cell.formula) {
           cell.border = {
             top: { style: 'thin' },
             left: { style: 'thin' },

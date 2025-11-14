@@ -81,22 +81,7 @@ export async function GET(
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     summarySheet.getRow(1).height = 30;
     
-    // Informacje o jadłospisie - formatowanie dat identyczne jak w nazwie pliku
-    let dateRangeInfo = '';
-    if (mealPlan.startDate && mealPlan.endDate) {
-      // Używamy UTC aby uniknąć przesunięcia czasowego
-      const startDate = new Date(mealPlan.startDate);
-      const endDate = new Date(mealPlan.endDate);
-      const startDateStr = `${String(startDate.getUTCDate()).padStart(2, '0')}.${String(startDate.getUTCMonth() + 1).padStart(2, '0')}.${startDate.getUTCFullYear()}`;
-      const endDateStr = `${String(endDate.getUTCDate()).padStart(2, '0')}.${String(endDate.getUTCMonth() + 1).padStart(2, '0')}.${endDate.getUTCFullYear()}`;
-      dateRangeInfo = `Zakres dat: ${startDateStr}-${endDateStr}`;
-    } else if (mealPlan.weekNumber) {
-      dateRangeInfo = `Tydzień: ${mealPlan.weekNumber}`;
-    } else {
-      dateRangeInfo = 'Zakres dat: -';
-    }
-    
-    summarySheet.getCell('A2').value = dateRangeInfo;
+    // Informacje o jadłospisie - usunięto zakres dat z A2
     summarySheet.getCell('C2').value = `Sezon: ${
       mealPlan.season === 'SPRING' ? 'Wiosna' :
       mealPlan.season === 'SUMMER' ? 'Lato' :
