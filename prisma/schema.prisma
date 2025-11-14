@@ -146,7 +146,9 @@ model NutritionalStandards {
 model MealPlan {
   id                    String              @id @default(cuid())
   name                  String              // Nazwa jadłospisu (np. "Tydzień 4 - Wiosna/Lato")
-  weekNumber            Int?                // Numer tygodnia (opcjonalny)
+  weekNumber            Int?                // Numer tygodnia (opcjonalny, deprecated)
+  startDate             DateTime?           // Data rozpoczęcia obowiązywania jadłospisu
+  endDate               DateTime?           // Data zakończenia obowiązywania jadłospisu
   season                Season?             // Sezon
   description           String?             // Dodatkowy opis
   standardsId           String?             // ID norm żywieniowych
@@ -160,6 +162,8 @@ model MealPlan {
   @@map("meal_plans")
   @@index([weekNumber])
   @@index([season])
+  @@index([startDate])
+  @@index([endDate])
 }
 
 enum Season {
@@ -247,6 +251,9 @@ model AppSettings {
   
   // Własne posiłki (JSON z definicjami custom meals)
   customMeals           Json?      @default("[]")
+  
+  // Wytyczne żywieniowe
+  nutritionalGuidelines String?    @default("Wytyczne żywieniowe dla przedszkoli obejmują 4-5 posiłków dziennie, zgodnie z zasadami prawidłowego żywienia, z uwzględnieniem różnorodnych grup produktów, takich jak: produkty zbożowe, mleko i przetwory, chude mięso, ryby, jaja, rośliny strączkowe, warzywa, owoce i tłuszcze roślinne. Ważne jest ograniczenie cukru, soli, tłuszczów zwierzęcych, żywności przetworzonej i słodyczy, a skupienie się na warzywach i owocach sezonowych oraz produktach pełnoziarnistych.\nKluczowe zasady żywienia w przedszkolu:\nCzęstotliwość posiłków: Zapewnij 4-5 posiłków dziennie, z przerwami nie dłuższymi niż 3-4 godziny.\nRóżnorodność: W każdym posiłku powinny znaleźć się produkty z 5 grup: zbożowe, mleko i przetwory, mięso/ryby/jaja/nasiona roślin strączkowych, warzywa i owoce, tłuszcze.\nProdukty mleczne: W diecie dziecka powinny znaleźć się 2 razy dziennie, w postaci mleka, jogurtu naturalnego, kefiru czy sera białego.\nBiałko: W jadłospisie należy uwzględniać chude mięso, drób, ryby, jaja, nasiona roślin strączkowych i orzechy.\nWarzywa i owoce: Zapewnij różnorodne warzywa i owoce, najlepiej sezonowe, a zimą można wykorzystywać mrożonki.\nTłuszcze: Ogranicz tłuszcze zwierzęce na rzecz roślinnych, np. olej rzepakowy czy oliwa z oliwek.\nOgraniczenia: Unikaj podawania dużej ilości cukru, soli, słodyczy, żywności przetworzonej (z konserwantami, barwnikami) oraz potraw ciężkostrawnych i tłustych.\nWytyczne dotyczące przygotowywania posiłków:\nUnikaj: Podawania potraw przygotowanych w ten sam sposób, np. smażonej ryby i frytek.\nPreferuj: Potrawy lekkostrawne z dodatkiem warzyw gotowanych i surowych.\nUcz żucia: Podawaj pokarmy, które wymagają gryzienia, aby rozwijać prawidłowy zgryz.\nWoda zamiast soków: Do picia podawaj głównie wodę; soki można włączać okazjonalnie w małych ilościach") @db.Text
   
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt

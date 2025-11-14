@@ -15,7 +15,8 @@ const updateSettingsSchema = z.object({
   includeInCalories: z.array(z.enum(['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK', 'SECOND_SNACK', 'DINNER', 'OTHER'])).optional(),
   exportForParents: z.array(z.enum(['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK', 'SECOND_SNACK', 'DINNER', 'OTHER'])).optional(),
   exportForSanepid: z.array(z.enum(['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK', 'SECOND_SNACK', 'DINNER', 'OTHER'])).optional(),
-  customMeals: z.array(customMealSchema).optional()
+  customMeals: z.array(customMealSchema).optional(),
+  nutritionalGuidelines: z.string().optional()
 })
 
 // GET - pobierz ustawienia
@@ -84,6 +85,10 @@ export async function PATCH(request: NextRequest) {
     
     if (validatedData.customMeals !== undefined) {
       updateData.customMeals = validatedData.customMeals
+    }
+    
+    if (validatedData.nutritionalGuidelines !== undefined) {
+      updateData.nutritionalGuidelines = validatedData.nutritionalGuidelines
     }
     
     if (!settings) {

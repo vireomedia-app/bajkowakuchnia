@@ -38,6 +38,7 @@ interface MealSettings {
     label: string
     description: string
   }>
+  nutritionalGuidelines: string
 }
 
 const DEFAULT_MEAL_OPTIONS: MealOption[] = [
@@ -54,13 +55,16 @@ export default function SettingsPage() {
     includeInCalories: [],
     exportForParents: [],
     exportForSanepid: [],
-    customMeals: []
+    customMeals: [],
+    nutritionalGuidelines: ''
   })
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [showAddMealDialog, setShowAddMealDialog] = useState(false)
   const [newMealLabel, setNewMealLabel] = useState('')
   const [newMealDescription, setNewMealDescription] = useState('')
+  const [showGuidelinesDialog, setShowGuidelinesDialog] = useState(false)
+  const [guidelinesText, setGuidelinesText] = useState('')
 
   useEffect(() => {
     fetchSettings()
@@ -77,8 +81,10 @@ export default function SettingsPage() {
         includeInCalories: data.includeInCalories || [],
         exportForParents: data.exportForParents || [],
         exportForSanepid: data.exportForSanepid || [],
-        customMeals: data.customMeals || []
+        customMeals: data.customMeals || [],
+        nutritionalGuidelines: data.nutritionalGuidelines || ''
       })
+      setGuidelinesText(data.nutritionalGuidelines || '')
     } catch (error) {
       console.error('Error fetching settings:', error)
       toast.error('Błąd podczas pobierania ustawień')
@@ -87,9 +93,9 @@ export default function SettingsPage() {
     }
   }
 
-  const handleToggleSetting = (mealType: MealType, settingType: keyof Omit<MealSettings, 'customMeals'>) => {
+  const handleToggleSetting = (mealType: MealType, settingType: keyof Omit<MealSettings, 'customMeals' | 'nutritionalGuidelines'>) => {
     setSettings(prev => {
-      const currentArray = prev[settingType]
+      const currentArray = prev[settingType] as MealType[]
       if (currentArray.includes(mealType)) {
         return {
           ...prev,
@@ -102,6 +108,20 @@ export default function SettingsPage() {
         }
       }
     })
+  }
+
+  const handleOpenGuidelinesEditor = () => {
+    setGuidelinesText(settings.nutritionalGuidelines)
+    setShowGuidelinesDialog(true)
+  }
+
+  const handleSaveGuidelines = () => {
+    setSettings(prev => ({
+      ...prev,
+      nutritionalGuidelines: guidelinesText
+    }))
+    setShowGuidelinesDialog(false)
+    toast.success('Wytyczne żywieniowe zostały zaktualizowane')
   }
 
   const handleAddCustomMeal = () => {
@@ -196,9 +216,36 @@ export default function SettingsPage() {
           <SettingsIcon className="w-6 h-6 text-white" />
         </div>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Ustawienia główne</h1>
-          <p className="text-gray-600">Konfiguracja posiłków w jadłospisie</p>
+          <h1 className="text-3xl font-bold text-gray-900">Ustawienia globalne</h1>
+          <p className="text-gray-600">Konfiguracja aplikacji i jadłospisów</p>
         </div>
+      </div>
+
+      {/* Szybkie akcje */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/menu/standards')}>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <SettingsIcon className="w-5 h-5 text-purple-600" />
+              Edytuj normy żywieniowe
+            </CardTitle>
+            <CardDescription>
+              Zarządzaj normami kalorycznymi i wartościami odżywczymi
+            </CardDescription>
+          </CardHeader>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={handleOpenGuidelinesEditor}>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <SettingsIcon className="w-5 h-5 text-purple-600" />
+              Edytuj wytyczne żywieniowe
+            </CardTitle>
+            <CardDescription>
+              Dostosuj tekst wytycznych wyświetlanych przy tworzeniu jadłospisów
+            </CardDescription>
+          </CardHeader>
+        </Card>
       </div>
 
       {/* Karta ustawień */}
@@ -404,6 +451,42 @@ export default function SettingsPage() {
             <Button onClick={handleAddCustomMeal} disabled={!newMealLabel.trim()}>
               <Plus className="w-4 h-4 mr-2" />
               Dodaj posiłek
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog edycji wytycznych żywieniowych */}
+      <Dialog open={showGuidelinesDialog} onOpenChange={setShowGuidelinesDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edytuj wytyczne żywieniowe</DialogTitle>
+            <DialogDescription>
+              Dostosuj tekst wytycznych wyświetlanych przy tworzeniu jadłospisów. Wytyczne są formatowane automatycznie - każda nowa linia tworzy osobny akapit.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="guidelines">Treść wytycznych</Label>
+              <Textarea
+                id="guidelines"
+                value={guidelinesText}
+                onChange={(e) => setGuidelinesText(e.target.value)}
+                placeholder="Wprowadź wytyczne żywieniowe..."
+                className="min-h-[400px] font-mono text-sm"
+              />
+              <p className="text-xs text-gray-500">
+                Pierwsze 3-4 zdania będą widoczne domyślnie, reszta po kliknięciu "Rozwiń"
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowGuidelinesDialog(false)}>
+              Anuluj
+            </Button>
+            <Button onClick={handleSaveGuidelines}>
+              <Save className="w-4 h-4 mr-2" />
+              Zapisz wytyczne
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -8,12 +8,21 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
-import { CalendarDays, ChefHat, AlertCircle, Download, Search, Plus, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { NutritionalGuidelines } from '@/components/nutritional-guidelines';
+import { CalendarDays, ChefHat, AlertCircle, Download, Search, Plus, Trash2, CheckCircle, XCircle, Edit, CalendarIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { pl } from 'date-fns/locale';
 import { calculateDailyNutrition, validateDailyNutrition, DAY_OF_WEEK_LABELS, MEAL_TYPE_LABELS } from '@/lib/meal-plan-utils';
-import type { MealPlan, Recipe, MealType } from '@/lib/types';
+import type { MealPlan, Recipe, MealType, Season } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 interface MealPlanEditorProps {
@@ -36,6 +45,14 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [appSettings, setAppSettings] = useState<any>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    name: initialMealPlan.name,
+    startDate: initialMealPlan.startDate ? new Date(initialMealPlan.startDate) : undefined as Date | undefined,
+    endDate: initialMealPlan.endDate ? new Date(initialMealPlan.endDate) : undefined as Date | undefined,
+    season: initialMealPlan.season as Season | '',
+    description: initialMealPlan.description || '',
+  });
 
   // Pobierz ustawienia aplikacji
   useEffect(() => {
@@ -239,6 +256,8 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
         body: JSON.stringify({
           name: mealPlan.name,
           weekNumber: mealPlan.weekNumber,
+          startDate: mealPlan.startDate,
+          endDate: mealPlan.endDate,
           season: mealPlan.season,
           description: mealPlan.description,
           standardsId: mealPlan.standardsId,
@@ -255,6 +274,52 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
       toast.error('Błąd podczas zapisywania jadłospisu');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editFormData.name.trim()) {
+      toast.error('Podaj nazwę jadłospisu');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/meal-plans/${mealPlan.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: editFormData.name.trim(),
+          startDate: editFormData.startDate ? editFormData.startDate.toISOString() : null,
+          endDate: editFormData.endDate ? editFormData.endDate.toISOString() : null,
+          season: editFormData.season || null,
+          description: editFormData.description.trim() || null,
+          standardsId: mealPlan.standardsId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update meal plan');
+      }
+
+      const updatedMealPlan = await response.json();
+      setMealPlan(updatedMealPlan);
+      setEditFormData({
+        name: updatedMealPlan.name,
+        startDate: updatedMealPlan.startDate ? new Date(updatedMealPlan.startDate) : undefined,
+        endDate: updatedMealPlan.endDate ? new Date(updatedMealPlan.endDate) : undefined,
+        season: updatedMealPlan.season || '',
+        description: updatedMealPlan.description || '',
+      });
+      setIsEditDialogOpen(false);
+      toast.success('Podstawowe informacje zostały zaktualizowane');
+      router.refresh();
+    } catch (error) {
+      console.error('Error updating meal plan:', error);
+      toast.error('Błąd podczas aktualizacji jadłospisu');
     }
   };
 
@@ -335,6 +400,11 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
 
   return (
     <div className="space-y-6">
+      {/* Wytyczne żywieniowe */}
+      {appSettings?.nutritionalGuidelines && (
+        <NutritionalGuidelines guidelines={appSettings.nutritionalGuidelines} />
+      )}
+      
       {/* Header */}
       <Card>
         <CardHeader className="p-4 lg:p-6">
@@ -348,8 +418,10 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
                 <CardDescription className="mt-2 text-sm">{mealPlan.description}</CardDescription>
               )}
               <div className="flex gap-2 lg:gap-3 mt-2 lg:mt-3 flex-wrap">
-                {mealPlan.weekNumber && (
-                  <Badge variant="outline" className="text-xs">Tydzień {mealPlan.weekNumber}</Badge>
+                {(mealPlan.startDate && mealPlan.endDate) && (
+                  <Badge variant="outline" className="text-xs">
+                    {new Date(mealPlan.startDate).toLocaleDateString('pl-PL')} - {new Date(mealPlan.endDate).toLocaleDateString('pl-PL')}
+                  </Badge>
                 )}
                 {mealPlan.season && (
                   <Badge variant="outline" className="text-xs">
@@ -361,6 +433,139 @@ export function MealPlanEditor({ mealPlan: initialMealPlan, availableRecipes }: 
               </div>
             </div>
             <div className="flex gap-2 flex-wrap lg:flex-nowrap lg:ml-4">
+              <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    className="gap-1 lg:gap-2 text-xs lg:text-sm h-8 lg:h-10 px-2 lg:px-4"
+                  >
+                    <Edit className="w-3 h-3 lg:w-4 lg:h-4" />
+                    <span className="hidden sm:inline">Edytuj</span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <form onSubmit={handleEditSubmit}>
+                    <DialogHeader>
+                      <DialogTitle>Edytuj podstawowe informacje</DialogTitle>
+                      <DialogDescription>
+                        Zmień nazwę, zakres dat, sezon lub opis jadłospisu
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div>
+                        <Label htmlFor="edit-name">Nazwa jadłospisu *</Label>
+                        <Input
+                          id="edit-name"
+                          value={editFormData.name}
+                          onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                          placeholder="Np. Tydzień 4 - Wiosna/Lato"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <Label>Zakres dat</Label>
+                        <div className="grid grid-cols-2 gap-4 mt-2">
+                          <div>
+                            <Label htmlFor="edit-startDate" className="text-sm text-muted-foreground">Data rozpoczęcia</Label>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  id="edit-startDate"
+                                  type="button"
+                                  variant="outline"
+                                  className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !editFormData.startDate && "text-muted-foreground"
+                                  )}
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {editFormData.startDate ? format(editFormData.startDate, "PPP", { locale: pl }) : "Wybierz datę"}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={editFormData.startDate}
+                                  onSelect={(date) => setEditFormData({ ...editFormData, startDate: date })}
+                                  locale={pl}
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                          <div>
+                            <Label htmlFor="edit-endDate" className="text-sm text-muted-foreground">Data zakończenia</Label>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  id="edit-endDate"
+                                  type="button"
+                                  variant="outline"
+                                  className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !editFormData.endDate && "text-muted-foreground"
+                                  )}
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {editFormData.endDate ? format(editFormData.endDate, "PPP", { locale: pl }) : "Wybierz datę"}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={editFormData.endDate}
+                                  onSelect={(date) => setEditFormData({ ...editFormData, endDate: date })}
+                                  locale={pl}
+                                  disabled={(date) => editFormData.startDate ? date < editFormData.startDate : false}
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="edit-season">Sezon</Label>
+                        <Select
+                          value={editFormData.season}
+                          onValueChange={(value) => setEditFormData({ ...editFormData, season: value as Season })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Wybierz sezon" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="SPRING">Wiosna</SelectItem>
+                            <SelectItem value="SUMMER">Lato</SelectItem>
+                            <SelectItem value="AUTUMN">Jesień</SelectItem>
+                            <SelectItem value="WINTER">Zima</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="edit-description">Opis (opcjonalnie)</Label>
+                        <Textarea
+                          id="edit-description"
+                          value={editFormData.description}
+                          onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                          placeholder="Dodatkowe informacje o jadłospisie"
+                          rows={3}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                        Anuluj
+                      </Button>
+                      <Button type="submit">
+                        Zapisz zmiany
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
               <Button 
                 variant="default" 
                 className="gap-1 lg:gap-2 text-xs lg:text-sm h-8 lg:h-10 px-2 lg:px-4"

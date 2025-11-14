@@ -52,6 +52,9 @@ export function TransactionsList({ transactions, productUnit = 'szt' }: Transact
                 Rozchód ({productUnit})
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Strata ({productUnit})
+              </th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Saldo ({productUnit})
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -109,6 +112,15 @@ export function TransactionsList({ transactions, productUnit = 'szt' }: Transact
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
+                  {transaction?.loss && transaction.loss > 0 ? (
+                    <span className="text-sm font-medium text-orange-600">
+                      {(transaction.loss).toFixed(2)}
+                    </span>
+                  ) : (
+                    <span className="text-sm text-gray-400">-</span>
+                  )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right">
                   <span className="text-sm font-bold text-gray-900">
                     {(transaction?.balance || 0).toFixed(2)}
                   </span>
@@ -161,7 +173,7 @@ export function TransactionsList({ transactions, productUnit = 'szt' }: Transact
             </div>
             
             {/* Transaction Details */}
-            <div className="grid grid-cols-3 gap-3 mb-3">
+            <div className="grid grid-cols-4 gap-2 mb-3">
               <div className="text-center p-2 bg-gray-50 rounded">
                 <div className="text-xs text-gray-500 mb-1">Przychód</div>
                 {transaction?.type === 'INCOME' ? (
@@ -185,6 +197,17 @@ export function TransactionsList({ transactions, productUnit = 'szt' }: Transact
                       -{(transaction?.quantity || 0).toFixed(2)}
                     </span>
                   </div>
+                ) : (
+                  <span className="text-sm text-gray-400">-</span>
+                )}
+              </div>
+              
+              <div className="text-center p-2 bg-orange-50 rounded">
+                <div className="text-xs text-gray-500 mb-1">Strata</div>
+                {transaction?.loss && transaction.loss > 0 ? (
+                  <span className="text-sm font-medium text-orange-600">
+                    {(transaction.loss).toFixed(2)}
+                  </span>
                 ) : (
                   <span className="text-sm text-gray-400">-</span>
                 )}
