@@ -94,12 +94,14 @@ export async function GET(
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     summarySheet.getRow(1).height = 30;
     
-    // Informacje o jadłospisie
+    // Informacje o jadłospisie - formatowanie dat identyczne jak w nazwie pliku
     let dateRangeInfo = '';
     if (mealPlan.startDate && mealPlan.endDate) {
-      // Formatuj daty tak samo jak w tytule pliku
-      const startDateStr = new Date(mealPlan.startDate).toLocaleDateString('pl-PL');
-      const endDateStr = new Date(mealPlan.endDate).toLocaleDateString('pl-PL');
+      // Używamy UTC aby uniknąć przesunięcia czasowego
+      const startDate = new Date(mealPlan.startDate);
+      const endDate = new Date(mealPlan.endDate);
+      const startDateStr = `${String(startDate.getUTCDate()).padStart(2, '0')}.${String(startDate.getUTCMonth() + 1).padStart(2, '0')}.${startDate.getUTCFullYear()}`;
+      const endDateStr = `${String(endDate.getUTCDate()).padStart(2, '0')}.${String(endDate.getUTCMonth() + 1).padStart(2, '0')}.${endDate.getUTCFullYear()}`;
       dateRangeInfo = `Zakres dat: ${startDateStr}-${endDateStr}`;
     } else if (mealPlan.weekNumber) {
       dateRangeInfo = `Tydzień: ${mealPlan.weekNumber}`;
@@ -157,12 +159,26 @@ export async function GET(
       
       row.alignment = { vertical: 'top', wrapText: true };
       
-      // Oblicz wysokość wiersza na podstawie maksymalnej liczby receptur
-      const maxRecipes = Math.max(...exportedMealTypes.map((mt) => {
+      // Oblicz wysokość wiersza uwzględniając długość tekstu w każdej komórce
+      let maxLines = 1;
+      exportedMealTypes.forEach((mt) => {
         const meal = day.meals?.find(m => m.mealType === mt);
-        return meal?.recipes?.length || 0;
-      }), 1);
-      row.height = Math.max(40, maxRecipes * 18 + 10);
+        if (meal && meal.recipes && meal.recipes.length > 0) {
+          // Liczba receptur = liczba linii
+          const lines = meal.recipes.length;
+          // Dodatkowo sprawdź długość nazw - długie nazwy mogą się zawijać
+          meal.recipes.forEach(mr => {
+            const recipeName = mr.recipe?.name || '';
+            // Jeśli nazwa jest dłuższa niż 30 znaków, może się zawijać
+            if (recipeName.length > 30) {
+              maxLines = Math.max(maxLines, lines + 1);
+            }
+          });
+          maxLines = Math.max(maxLines, lines);
+        }
+      });
+      // Ustaw wysokość na podstawie liczby linii (około 20 pikseli na linię + padding)
+      row.height = Math.max(25, maxLines * 20 + 8);
       
       currentRow++;
     }
@@ -181,7 +197,7 @@ export async function GET(
       }
     }
     
-    // Auto-dopasowanie szerokości kolumn w arkuszu podsumowania
+    // Auto-dopasowanie szerokości kolumn w arkuszu podsumowania - zmniejszone dla A4
     summarySheet.columns.forEach((column: any, index: number) => {
       let maxLength = 0;
       column.eachCell?.({ includeEmpty: true }, (cell: any) => {
@@ -195,10 +211,11 @@ export async function GET(
       });
       // Pierwsza kolumna (Dzień tygodnia) - mniejsza szerokość
       if (index === 0) {
-        column.width = Math.max(15, maxLength + 2);
+        column.width = Math.min(15, Math.max(12, maxLength + 1));
       } else {
-        // Kolumny z posiłkami - szerokość dopasowana do zawartości
-        column.width = Math.max(20, maxLength * 1.1 + 3);
+        // Kolumny z posiłkami - zmniejszona szerokość dla A4
+        // Maksymalna szerokość 25 znaków, minimalna 15
+        column.width = Math.min(25, Math.max(15, maxLength * 0.9 + 2));
       }
     });
     
@@ -489,11 +506,13 @@ export async function GET(
     // Wygeneruj plik Excel
     const buffer = await workbook.xlsx.writeBuffer();
     
-    // Utwórz nazwę pliku z zakresem dat
+    // Utwórz nazwę pliku z zakresem dat - używamy UTC aby uniknąć przesunięcia
     let fileNameSuffix = '';
     if (mealPlan.startDate && mealPlan.endDate) {
-      const startDateStr = new Date(mealPlan.startDate).toLocaleDateString('pl-PL').replace(/\./g, '-');
-      const endDateStr = new Date(mealPlan.endDate).toLocaleDateString('pl-PL').replace(/\./g, '-');
+      const startDate = new Date(mealPlan.startDate);
+      const endDate = new Date(mealPlan.endDate);
+      const startDateStr = `${String(startDate.getUTCDate()).padStart(2, '0')}-${String(startDate.getUTCMonth() + 1).padStart(2, '0')}-${startDate.getUTCFullYear()}`;
+      const endDateStr = `${String(endDate.getUTCDate()).padStart(2, '0')}-${String(endDate.getUTCMonth() + 1).padStart(2, '0')}-${endDate.getUTCFullYear()}`;
       fileNameSuffix = `${startDateStr}_${endDateStr}`;
     } else if (mealPlan.weekNumber) {
       fileNameSuffix = `Tydzien_${mealPlan.weekNumber}`;
