@@ -486,7 +486,7 @@ export async function GET(
                 
                 // Kolumna H: Całkowita ilość (Ilość na porcję * Liczba dzieci)
                 ingredientRow.getCell(8).value = { formula: `=E${detailsRow}*G${detailsRow}` };
-                ingredientRow.getCell(8).numFmt = '0.##'; // Format liczby - bez miejsc dziesiętnych dla liczb całkowitych
+                ingredientRow.getCell(8).numFmt = '0'; // Format liczby - bez przecinka
                 ingredientRow.getCell(8).alignment = { horizontal: 'right', vertical: 'middle' };
                 
                 detailsRow++;
