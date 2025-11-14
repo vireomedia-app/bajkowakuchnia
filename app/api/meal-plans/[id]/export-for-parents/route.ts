@@ -70,8 +70,10 @@ export async function GET(
     // Arkusz: Jadłospis dla rodziców
     const summarySheet = workbook.addWorksheet('Jadłospis dla rodziców');
     
-    // Tytuł
-    const numColumns = exportForParents.length + 1; // +1 dla kolumny z dniem tygodnia
+    // Liczba kolumn: 1 (dzień tygodnia) + liczba posiłków
+    const numColumns = exportForParents.length + 1;
+    
+    // Tytuł - dopasowany do liczby kolumn
     summarySheet.mergeCells(1, 1, 1, numColumns);
     const titleCell = summarySheet.getCell('A1');
     titleCell.value = `${mealPlan.name} - Jadłospis dla rodziców`;
@@ -80,7 +82,21 @@ export async function GET(
     summarySheet.getRow(1).height = 30;
     
     // Informacje o jadłospisie
-    summarySheet.getCell('A2').value = `Tydzień: ${mealPlan.weekNumber || '-'}`;
+    let dateRangeInfo = '';
+    if (mealPlan.startDate && mealPlan.endDate) {
+      // Użyj lokalnej daty bez konwersji timezone
+      const startDate = new Date(mealPlan.startDate);
+      const endDate = new Date(mealPlan.endDate);
+      const startDateStr = `${String(startDate.getUTCDate()).padStart(2, '0')}.${String(startDate.getUTCMonth() + 1).padStart(2, '0')}.${startDate.getUTCFullYear()}`;
+      const endDateStr = `${String(endDate.getUTCDate()).padStart(2, '0')}.${String(endDate.getUTCMonth() + 1).padStart(2, '0')}.${endDate.getUTCFullYear()}`;
+      dateRangeInfo = `Zakres dat: ${startDateStr} - ${endDateStr}`;
+    } else if (mealPlan.weekNumber) {
+      dateRangeInfo = `Tydzień: ${mealPlan.weekNumber}`;
+    } else {
+      dateRangeInfo = 'Zakres dat: -';
+    }
+    
+    summarySheet.getCell('A2').value = dateRangeInfo;
     summarySheet.getCell('C2').value = `Sezon: ${
       mealPlan.season === 'SPRING' ? 'Wiosna' :
       mealPlan.season === 'SUMMER' ? 'Lato' :
@@ -88,13 +104,8 @@ export async function GET(
       mealPlan.season === 'WINTER' ? 'Zima' : '-'
     }`;
     
-    if (mealPlan.description) {
-      summarySheet.getCell('A3').value = `Opis: ${mealPlan.description}`;
-      summarySheet.mergeCells(1, 3, numColumns, 3);
-    }
-    
-    // Nagłówki tabeli - tylko posiłki z exportForParents
-    const headerRow = summarySheet.getRow(5);
+    // Nagłówki tabeli (wiersz 3 zamiast 5 - usunięto puste wiersze)
+    const headerRow = summarySheet.getRow(3);
     const headers = ['Dzień tygodnia'];
     
     // Mapa typów posiłków do etykiet
@@ -117,14 +128,10 @@ export async function GET(
     headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
     headerRow.height = 25;
     
-    // Ustaw szerokość kolumn
-    summarySheet.getColumn(1).width = 20;
-    for (let i = 2; i <= numColumns; i++) {
-      summarySheet.getColumn(i).width = 25;
-    }
+    // Szerokość kolumn zostanie ustawiona automatycznie po wypełnieniu danych
     
-    // Wypełnij dane dla każdego dnia
-    let currentRow = 6;
+    // Wypełnij dane dla każdego dnia (wiersz 4 zamiast 6)
+    let currentRow = 4;
     for (const day of mealPlan.days) {
       const row = summarySheet.getRow(currentRow);
       row.getCell(1).value = DAY_OF_WEEK_LABELS[day.dayOfWeek] || `Dzień ${day.dayOfWeek}`;
@@ -157,8 +164,8 @@ export async function GET(
       currentRow++;
     }
     
-    // Zastosuj obramowanie do tabeli
-    for (let row = 5; row < currentRow; row++) {
+    // Zastosuj obramowanie do tabeli (od wiersza 3)
+    for (let row = 3; row < currentRow; row++) {
       for (let col = 1; col <= numColumns; col++) {
         const cell = summarySheet.getRow(row).getCell(col);
         cell.border = {
@@ -169,6 +176,21 @@ export async function GET(
         };
       }
     }
+    
+    // Auto-dopasowanie szerokości kolumn
+    summarySheet.columns.forEach((column: any) => {
+      let maxLength = 0;
+      column.eachCell?.({ includeEmpty: true }, (cell: any) => {
+        const cellValue = cell.value ? cell.value.toString() : '';
+        const cellLength = cellValue.split('\n').reduce((max: number, line: string) => {
+          return Math.max(max, line.length);
+        }, 0);
+        if (cellLength > maxLength) {
+          maxLength = cellLength;
+        }
+      });
+      column.width = Math.max(12, Math.min(maxLength + 2, 50));
+    });
     
     // Wygeneruj plik Excel
     const buffer = await workbook.xlsx.writeBuffer();

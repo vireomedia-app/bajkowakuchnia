@@ -71,8 +71,23 @@ export async function GET(
     // Arkusz 1: Skrót jadłospisu
     const summarySheet = workbook.addWorksheet('Jadłospis - Skrót');
     
-    // Tytuł
-    summarySheet.mergeCells('A1:F1');
+    // Nagłówki tabeli - TYLKO posiłki zaznaczone w exportForSanepid
+    const ALL_MEAL_TYPES = ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK', 'SECOND_SNACK'];
+    const exportedMealTypes = ALL_MEAL_TYPES.filter(mt => exportForSanepid.includes(mt as any));
+    
+    // Sprawdź czy są jakieś posiłki do eksportu
+    if (exportedMealTypes.length === 0) {
+      return NextResponse.json(
+        { error: 'Brak posiłków zaznaczonych do eksportu dla Sanepidu w ustawieniach' },
+        { status: 400 }
+      );
+    }
+    
+    // Liczba kolumn: 1 (dzień tygodnia) + liczba posiłków
+    const numColumns = exportedMealTypes.length + 1;
+    
+    // Tytuł - dopasowany do liczby kolumn
+    summarySheet.mergeCells(1, 1, 1, numColumns);
     const titleCell = summarySheet.getCell('A1');
     titleCell.value = mealPlan.name;
     titleCell.font = { size: 16, bold: true };
@@ -82,8 +97,11 @@ export async function GET(
     // Informacje o jadłospisie
     let dateRangeInfo = '';
     if (mealPlan.startDate && mealPlan.endDate) {
-      const startDateStr = new Date(mealPlan.startDate).toLocaleDateString('pl-PL');
-      const endDateStr = new Date(mealPlan.endDate).toLocaleDateString('pl-PL');
+      // Użyj lokalnej daty bez konwersji timezone
+      const startDate = new Date(mealPlan.startDate);
+      const endDate = new Date(mealPlan.endDate);
+      const startDateStr = `${String(startDate.getUTCDate()).padStart(2, '0')}.${String(startDate.getUTCMonth() + 1).padStart(2, '0')}.${startDate.getUTCFullYear()}`;
+      const endDateStr = `${String(endDate.getUTCDate()).padStart(2, '0')}.${String(endDate.getUTCMonth() + 1).padStart(2, '0')}.${endDate.getUTCFullYear()}`;
       dateRangeInfo = `Zakres dat: ${startDateStr} - ${endDateStr}`;
     } else if (mealPlan.weekNumber) {
       dateRangeInfo = `Tydzień: ${mealPlan.weekNumber}`;
@@ -99,24 +117,8 @@ export async function GET(
       mealPlan.season === 'WINTER' ? 'Zima' : '-'
     }`;
     
-    if (mealPlan.description) {
-      summarySheet.getCell('A3').value = `Opis: ${mealPlan.description}`;
-      summarySheet.mergeCells('A3:F3');
-    }
-    
-    // Nagłówki tabeli - TYLKO posiłki zaznaczone w exportForSanepid
-    const ALL_MEAL_TYPES = ['BREAKFAST', 'SECOND_BREAKFAST', 'LUNCH', 'FIRST_SNACK', 'SECOND_SNACK'];
-    const exportedMealTypes = ALL_MEAL_TYPES.filter(mt => exportForSanepid.includes(mt as any));
-    
-    // Sprawdź czy są jakieś posiłki do eksportu
-    if (exportedMealTypes.length === 0) {
-      return NextResponse.json(
-        { error: 'Brak posiłków zaznaczonych do eksportu dla Sanepidu w ustawieniach' },
-        { status: 400 }
-      );
-    }
-    
-    const headerRow = summarySheet.getRow(5);
+    // Nagłówki tabeli (wiersz 3 zamiast 5 - usunięto puste wiersze)
+    const headerRow = summarySheet.getRow(3);
     const headerValues = ['Dzień tygodnia'];
     exportedMealTypes.forEach(mt => {
       headerValues.push(MEAL_TYPE_LABELS[mt as any] || mt);
@@ -128,8 +130,8 @@ export async function GET(
     
     // Szerokość kolumn zostanie ustawiona automatycznie po wypełnieniu danych
     
-    // Wypełnij dane dla każdego dnia
-    let currentRow = 6;
+    // Wypełnij dane dla każdego dnia (wiersz 4 zamiast 6)
+    let currentRow = 4;
     for (const day of mealPlan.days) {
       const row = summarySheet.getRow(currentRow);
       row.getCell(1).value = DAY_OF_WEEK_LABELS[day.dayOfWeek] || `Dzień ${day.dayOfWeek}`;
@@ -164,9 +166,9 @@ export async function GET(
       currentRow++;
     }
     
-    // Zastosuj obramowanie do tabeli - TYLKO dla wyeksportowanych kolumn
+    // Zastosuj obramowanie do tabeli - TYLKO dla wyeksportowanych kolumn (od wiersza 3)
     const totalColumns = exportedMealTypes.length + 1;
-    for (let row = 5; row < currentRow; row++) {
+    for (let row = 3; row < currentRow; row++) {
       for (let col = 1; col <= totalColumns; col++) {
         const cell = summarySheet.getRow(row).getCell(col);
         cell.border = {
