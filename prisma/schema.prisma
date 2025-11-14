@@ -146,15 +146,15 @@ model NutritionalStandards {
 model MealPlan {
   id                    String              @id @default(cuid())
   name                  String              // Nazwa jadłospisu (np. "Tydzień 4 - Wiosna/Lato")
-  weekNumber            Int?                // Numer tygodnia (opcjonalny, deprecated)
-  startDate             DateTime?           // Data rozpoczęcia obowiązywania jadłospisu
-  endDate               DateTime?           // Data zakończenia obowiązywania jadłospisu
+  weekNumber            Int?                @map("week_number") // Numer tygodnia (opcjonalny, deprecated)
+  startDate             DateTime?           @map("start_date") // Data rozpoczęcia obowiązywania jadłospisu
+  endDate               DateTime?           @map("end_date") // Data zakończenia obowiązywania jadłospisu
   season                Season?             // Sezon
   description           String?             // Dodatkowy opis
-  standardsId           String?             // ID norm żywieniowych
+  standardsId           String?             @map("standards_id") // ID norm żywieniowych
   
-  createdAt             DateTime            @default(now())
-  updatedAt             DateTime            @updatedAt
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
   
   days                  MealPlanDay[]
   standards             NutritionalStandards? @relation(fields: [standardsId], references: [id], onDelete: SetNull)
