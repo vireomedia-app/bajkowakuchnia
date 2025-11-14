@@ -5,8 +5,18 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Copy, GripVertical } from 'lucide-react';
+import { Copy, GripVertical, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   DndContext,
   closestCenter,
@@ -37,9 +47,11 @@ interface MealPlan {
 interface SortableMealPlanProps {
   plan: MealPlan;
   onDuplicate: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
-function SortableMealPlan({ plan, onDuplicate }: SortableMealPlanProps) {
+function SortableMealPlan({ plan, onDuplicate, onDelete }: SortableMealPlanProps) {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const {
     attributes,
     listeners,
@@ -61,39 +73,62 @@ function SortableMealPlan({ plan, onDuplicate }: SortableMealPlanProps) {
     onDuplicate(plan.id);
   };
 
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowDeleteDialog(true);
+  };
+
+  const handleConfirmDelete = () => {
+    setShowDeleteDialog(false);
+    onDelete(plan.id);
+  };
+
   return (
-    <div ref={setNodeRef} style={style} className="relative">
-      <Card className="hover:shadow-lg transition-shadow">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            {/* Drag Handle */}
-            <button
-              {...attributes}
-              {...listeners}
-              className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 transition-colors"
-              aria-label="Przeciągnij aby zmienić kolejność"
-            >
-              <GripVertical className="w-5 h-5" />
-            </button>
+    <>
+      <div ref={setNodeRef} style={style} className="relative">
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              {/* Drag Handle */}
+              <button
+                {...attributes}
+                {...listeners}
+                className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Przeciągnij aby zmienić kolejność"
+              >
+                <GripVertical className="w-5 h-5" />
+              </button>
 
-            {/* Title - clickable link */}
-            <Link href={`/menu/meal-plans/${plan.id}`} className="flex-1">
-              <CardTitle className="text-gray-900 hover:text-green-600 transition-colors">
-                {plan.name}
-              </CardTitle>
-            </Link>
+              {/* Title - clickable link */}
+              <Link href={`/menu/meal-plans/${plan.id}`} className="flex-1">
+                <CardTitle className="text-gray-900 hover:text-green-600 transition-colors">
+                  {plan.name}
+                </CardTitle>
+              </Link>
 
-            {/* Duplicate Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDuplicateClick}
-              className="gap-2"
-            >
-              <Copy className="w-4 h-4" />
-              Duplikuj
-            </Button>
-          </div>
+              {/* Duplicate Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDuplicateClick}
+                className="gap-2"
+              >
+                <Copy className="w-4 h-4" />
+                Duplikuj
+              </Button>
+
+              {/* Delete Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDeleteClick}
+                className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                Usuń
+              </Button>
+            </div>
           {plan.description && (
             <CardDescription className="ml-8">{plan.description}</CardDescription>
           )}
@@ -117,6 +152,27 @@ function SortableMealPlan({ plan, onDuplicate }: SortableMealPlanProps) {
         </CardContent>
       </Card>
     </div>
+
+    <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Czy na pewno chcesz usunąć ten jadłospis?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Ta operacja jest nieodwracalna. Jadłospis &quot;{plan.name}&quot; zostanie trwale usunięty.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Anuluj</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleConfirmDelete}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            Usuń
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  </>
   );
 }
 
@@ -175,13 +231,34 @@ export default function MealPlansList({ initialPlans }: { initialPlans: MealPlan
       }
 
       const duplicatedPlan = await response.json();
-      toast.success('Jadłospis zduplikowany');
       
-      // Refresh the page to show the new plan
-      router.refresh();
+      // Dodaj zduplikowany plan do listy bez odświeżania strony
+      setPlans([...plans, duplicatedPlan]);
+      
+      toast.success('Jadłospis zduplikowany');
     } catch (error) {
       console.error('Error duplicating meal plan:', error);
       toast.error('Błąd podczas duplikowania jadłospisu');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const response = await fetch(`/api/meal-plans/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete');
+      }
+
+      // Usuń plan z listy bez odświeżania strony
+      setPlans(plans.filter(p => p.id !== id));
+      
+      toast.success('Jadłospis usunięty');
+    } catch (error) {
+      console.error('Error deleting meal plan:', error);
+      toast.error('Błąd podczas usuwania jadłospisu');
     }
   };
 
@@ -200,7 +277,12 @@ export default function MealPlansList({ initialPlans }: { initialPlans: MealPlan
         >
           <SortableContext items={plans} strategy={verticalListSortingStrategy}>
             {plans.map((plan) => (
-              <SortableMealPlan key={plan.id} plan={plan} onDuplicate={handleDuplicate} />
+              <SortableMealPlan 
+                key={plan.id} 
+                plan={plan} 
+                onDuplicate={handleDuplicate}
+                onDelete={handleDelete}
+              />
             ))}
           </SortableContext>
         </DndContext>
