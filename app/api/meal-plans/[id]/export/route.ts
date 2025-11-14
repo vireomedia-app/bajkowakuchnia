@@ -102,7 +102,7 @@ export async function GET(
       const endDate = new Date(mealPlan.endDate);
       const startDateStr = `${String(startDate.getUTCDate()).padStart(2, '0')}.${String(startDate.getUTCMonth() + 1).padStart(2, '0')}.${startDate.getUTCFullYear()}`;
       const endDateStr = `${String(endDate.getUTCDate()).padStart(2, '0')}.${String(endDate.getUTCMonth() + 1).padStart(2, '0')}.${endDate.getUTCFullYear()}`;
-      dateRangeInfo = `Zakres dat: ${startDateStr} - ${endDateStr}`;
+      dateRangeInfo = `Zakres dat: ${startDateStr}-${endDateStr}`;
     } else if (mealPlan.weekNumber) {
       dateRangeInfo = `Tydzień: ${mealPlan.weekNumber}`;
     } else {
@@ -194,10 +194,10 @@ export async function GET(
       });
       // Pierwsza kolumna (Dzień tygodnia) - mniejsza szerokość
       if (index === 0) {
-        column.width = Math.max(15, Math.min(maxLength + 2, 20));
+        column.width = Math.max(15, maxLength + 2);
       } else {
-        // Kolumny z posiłkami - większa szerokość dla pełnej widoczności
-        column.width = Math.max(20, Math.min(maxLength * 1.2 + 4, 60));
+        // Kolumny z posiłkami - szerokość dopasowana do zawartości
+        column.width = Math.max(20, maxLength * 1.1 + 3);
       }
     });
     

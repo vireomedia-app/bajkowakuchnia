@@ -89,7 +89,7 @@ export async function GET(
       const endDate = new Date(mealPlan.endDate);
       const startDateStr = `${String(startDate.getUTCDate()).padStart(2, '0')}.${String(startDate.getUTCMonth() + 1).padStart(2, '0')}.${startDate.getUTCFullYear()}`;
       const endDateStr = `${String(endDate.getUTCDate()).padStart(2, '0')}.${String(endDate.getUTCMonth() + 1).padStart(2, '0')}.${endDate.getUTCFullYear()}`;
-      dateRangeInfo = `Zakres dat: ${startDateStr} - ${endDateStr}`;
+      dateRangeInfo = `Zakres dat: ${startDateStr}-${endDateStr}`;
     } else if (mealPlan.weekNumber) {
       dateRangeInfo = `Tydzień: ${mealPlan.weekNumber}`;
     } else {
@@ -178,7 +178,7 @@ export async function GET(
     }
     
     // Auto-dopasowanie szerokości kolumn
-    summarySheet.columns.forEach((column: any) => {
+    summarySheet.columns.forEach((column: any, index: number) => {
       let maxLength = 0;
       column.eachCell?.({ includeEmpty: true }, (cell: any) => {
         const cellValue = cell.value ? cell.value.toString() : '';
@@ -189,7 +189,13 @@ export async function GET(
           maxLength = cellLength;
         }
       });
-      column.width = Math.max(12, Math.min(maxLength + 2, 50));
+      // Pierwsza kolumna (Dzień tygodnia) - mniejsza szerokość
+      if (index === 0) {
+        column.width = Math.max(15, maxLength + 2);
+      } else {
+        // Kolumny z posiłkami - szerokość dopasowana do zawartości
+        column.width = Math.max(20, maxLength * 1.1 + 3);
+      }
     });
     
     // Wygeneruj plik Excel
