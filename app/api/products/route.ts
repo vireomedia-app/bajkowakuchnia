@@ -9,7 +9,30 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    const products = await getProducts()
+    const searchParams = request.nextUrl.searchParams
+    const search = searchParams.get('search')
+    
+    let products
+    
+    if (search) {
+      // Wyszukiwanie produktów po nazwie
+      products = await prisma.product.findMany({
+        where: {
+          name: {
+            contains: search,
+            mode: 'insensitive'
+          }
+        },
+        orderBy: {
+          name: 'asc'
+        },
+        take: 20 // Limit wyników
+      })
+    } else {
+      // Pobierz wszystkie produkty
+      products = await getProducts()
+    }
+    
     return NextResponse.json(products, { 
       status: 200,
       headers: {

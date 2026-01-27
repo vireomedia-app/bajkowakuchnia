@@ -52,16 +52,22 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
 
     try {
       // Dodaj transakcję przychodu z numerem dokumentu
+      const payload: any = {
+        date: new Date().toISOString(),
+        type: 'INCOME',
+        quantity: quantity,
+        document: `Dostawa - ${new Date().toLocaleDateString('pl-PL')}`,
+      }
+      
+      // Dodaj documentNumber tylko jeśli nie jest pusty
+      if (documentNumber && documentNumber.trim()) {
+        payload.documentNumber = documentNumber.trim()
+      }
+      
       const response = await fetch(`/api/products/${currentProduct.id}/transactions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          date: new Date().toISOString(),
-          type: 'INCOME',
-          quantity: quantity,
-          document: `Dostawa - ${new Date().toLocaleDateString('pl-PL')}`,
-          documentNumber: documentNumber || undefined
-        })
+        body: JSON.stringify(payload)
       })
 
       if (!response.ok) {
@@ -123,10 +129,7 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
   }
 
   const handleDocumentNumberSubmit = () => {
-    if (!documentNumber.trim()) {
-      toast.error('Proszę podać numer dokumentu')
-      return
-    }
+    // Zezwalamy na pusty numer dokumentu
     setCurrentStep('method_choice')
   }
 
@@ -198,6 +201,9 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
                   <p className="text-xs text-gray-500">
                     Ten numer będzie przypisany do wszystkich produktów w tej dostawie
                   </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    💡 Możesz pominąć numer dokumentu jeśli nie jest wymagany
+                  </p>
                 </div>
 
                 <div className="flex space-x-3 pt-4">
@@ -211,7 +217,13 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
                   </Button>
                   <Button
                     onClick={handleDocumentNumberSubmit}
-                    disabled={!documentNumber.trim()}
+                    variant="ghost"
+                    className="flex-1"
+                  >
+                    Pomiń
+                  </Button>
+                  <Button
+                    onClick={handleDocumentNumberSubmit}
                     className="flex-1 bg-green-600 hover:bg-green-700"
                   >
                     Dalej
