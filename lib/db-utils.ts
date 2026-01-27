@@ -110,6 +110,7 @@ export async function createProduct(data: {
 export async function createTransaction(productId: string, data: {
   date: Date
   document: string
+  documentNumber?: string
   type: 'INCOME' | 'OUTCOME'
   quantity: number
   loss?: number
@@ -146,6 +147,7 @@ export async function createTransaction(productId: string, data: {
           productId,
           date: data.date,
           document: data.document,
+          documentNumber: data.documentNumber,
           type: data.type,
           quantity: data.quantity,
           loss: data.loss || 0,
