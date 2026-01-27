@@ -5,9 +5,10 @@ import { prisma } from '@/lib/db';
 // PUT - Aktualizacja norm żywieniowych (chronione przez middleware)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params
     const data = await request.json();
     
     // Walidacja danych
@@ -56,7 +57,7 @@ export async function PUT(
 
     // Aktualizacja norm
     const updatedStandard = await prisma.nutritionalStandards.update({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       data: {
         name: data.name,
         energyMin: parseFloat(data.energyMin),

@@ -5,10 +5,11 @@ import { createBackup, cleanupOldBackups } from '@/lib/backup-utils'
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = params.id
+    const resolvedParams = await params
+    const id = resolvedParams.id
     const body = await request.json()
     
     const { 
@@ -103,10 +104,11 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = params.id
+    const resolvedParams = await params
+    const id = resolvedParams.id
 
     // Create backup before making changes
     await createBackup('Przed usunięciem produktu')

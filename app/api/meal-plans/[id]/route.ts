@@ -5,11 +5,12 @@ import { prisma } from '@/lib/db';
 // GET konkretnego jadłospisu
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params
     const mealPlan = await prisma.mealPlan.findUnique({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       include: {
         standards: true,
         days: {
@@ -59,18 +60,17 @@ export async function GET(
 // PUT aktualizacja jadłospisu
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params
     const data = await request.json();
 
     const mealPlan = await prisma.mealPlan.update({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       data: {
         name: data.name,
         weekNumber: data.weekNumber,
-        startDate: data.startDate ? new Date(data.startDate) : null,
-        endDate: data.endDate ? new Date(data.endDate) : null,
         season: data.season,
         description: data.description,
         standardsId: data.standardsId,
@@ -109,11 +109,12 @@ export async function PUT(
 // DELETE jadłospisu
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params
     await prisma.mealPlan.delete({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
     });
 
     return NextResponse.json({ message: 'Jadłospis został usunięty' });

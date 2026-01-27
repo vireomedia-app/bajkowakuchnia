@@ -5,13 +5,14 @@ import { prisma } from '@/lib/db';
 // PUT aktualizacja receptury w posiłku (np. liczba porcji)
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string; mealId: string; recipeId: string } }
+  { params }: { params: Promise<{ id: string; mealId: string; recipeId: string }> }
 ) {
   try {
+    const resolvedParams = await params
     const data = await request.json();
 
     const mealPlanRecipe = await prisma.mealPlanRecipe.update({
-      where: { id: params.recipeId },
+      where: { id: resolvedParams.recipeId },
       data: {
         servings: data.servings,
         order: data.order,
@@ -34,11 +35,12 @@ export async function PUT(
 // DELETE usunięcie receptury z posiłku
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string; mealId: string; recipeId: string } }
+  { params }: { params: Promise<{ id: string; mealId: string; recipeId: string }> }
 ) {
   try {
+    const resolvedParams = await params
     await prisma.mealPlanRecipe.delete({
-      where: { id: params.recipeId },
+      where: { id: resolvedParams.recipeId },
     });
 
     return NextResponse.json({ message: 'Receptura została usunięta z posiłku' });

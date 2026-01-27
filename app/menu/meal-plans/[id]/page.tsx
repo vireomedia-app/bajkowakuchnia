@@ -163,9 +163,10 @@ async function getRecipes() {
   }
 }
 
-export default async function MealPlanDetailPage({ params }: { params: { id: string } }) {
+export default async function MealPlanDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params
   const [mealPlan, recipes] = await Promise.all([
-    getMealPlan(params.id),
+    getMealPlan(resolvedParams.id),
     getRecipes(),
   ]);
 

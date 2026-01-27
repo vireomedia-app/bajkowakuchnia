@@ -5,14 +5,15 @@ import { prisma } from '@/lib/db';
 // POST dodanie receptury do posiłku
 export async function POST(
   request: Request,
-  { params }: { params: { id: string; mealId: string } }
+  { params }: { params: Promise<{ id: string; mealId: string }> }
 ) {
   try {
+    const resolvedParams = await params
     const data = await request.json();
 
     const mealPlanRecipe = await prisma.mealPlanRecipe.create({
       data: {
-        mealPlanMealId: params.mealId,
+        mealPlanMealId: resolvedParams.mealId,
         recipeId: data.recipeId,
         servings: data.servings || 1,
         order: data.order || 0,

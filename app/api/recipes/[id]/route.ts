@@ -5,11 +5,12 @@ import { prisma } from '@/lib/db'
 // GET - Pobierz szczegóły receptury
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params
     const recipe = await prisma.recipe.findUnique({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       include: {
         ingredients: {
           include: {
@@ -73,19 +74,20 @@ export async function GET(
 // PATCH - Zaktualizuj recepturę
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params
     const data = await request.json()
     const { name, description, servings, categories, ingredients } = data
 
     // Usuń stare składniki i dodaj nowe
     await prisma.recipeIngredient.deleteMany({
-      where: { recipeId: params.id }
+      where: { recipeId: resolvedParams.id }
     })
 
     const recipe = await prisma.recipe.update({
-      where: { id: params.id },
+      where: { id: resolvedParams.id },
       data: {
         name,
         description,
@@ -122,11 +124,12 @@ export async function PATCH(
 // DELETE - Usuń recepturę
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params
     await prisma.recipe.delete({
-      where: { id: params.id }
+      where: { id: resolvedParams.id }
     })
 
     return NextResponse.json({ success: true })

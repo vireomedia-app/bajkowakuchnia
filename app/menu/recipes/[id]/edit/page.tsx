@@ -41,9 +41,10 @@ async function getProducts() {
   }
 }
 
-export default async function EditRecipePage({ params }: { params: { id: string } }) {
+export default async function EditRecipePage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params
   const [recipe, products] = await Promise.all([
-    getRecipe(params.id),
+    getRecipe(resolvedParams.id),
     getProducts()
   ])
 
@@ -54,7 +55,7 @@ export default async function EditRecipePage({ params }: { params: { id: string 
   return (
     <div className="space-y-6">
       {/* Navigation */}
-      <Link href={`/menu/recipes/${params.id}`}>
+      <Link href={`/menu/recipes/${resolvedParams.id}`}>
         <Button variant="ghost" className="gap-2">
           <ArrowLeft className="w-4 h-4" />
           Powrót do receptury

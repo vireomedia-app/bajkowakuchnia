@@ -7,14 +7,15 @@ import { createBackup, cleanupOldBackups } from '@/lib/backup-utils'
 // Update transaction
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params
     // Create backup before making changes
     await createBackup('Przed edycją transakcji')
     await cleanupOldBackups(50)
 
-    const { id } = params
+    const { id } = resolvedParams
     const body = await request.json()
     const { date, document, type, quantity } = body
 
@@ -58,14 +59,15 @@ export async function PUT(
 // Delete transaction
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params
     // Create backup before making changes
     await createBackup('Przed usunięciem transakcji')
     await cleanupOldBackups(50)
 
-    const { id } = params
+    const { id } = resolvedParams
 
     // Get the transaction to know which product to recalculate
     const transaction = await prisma.transaction.findUnique({

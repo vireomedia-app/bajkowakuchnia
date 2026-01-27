@@ -72,8 +72,9 @@ async function getRecipe(id: string): Promise<RecipeWithNutrition | null> {
   }
 }
 
-export default async function RecipeDetailPage({ params }: { params: { id: string } }) {
-  const recipe = await getRecipe(params.id)
+export default async function RecipeDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params
+  const recipe = await getRecipe(resolvedParams.id)
 
   if (!recipe) {
     notFound()
