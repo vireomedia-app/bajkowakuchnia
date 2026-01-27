@@ -1,6 +1,7 @@
 generator client {
     provider = "prisma-client-js"
     binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/kartoteka_magazynowa_app/nextjs_space/node_modules/.prisma/client"
 }
 
 datasource db {
@@ -40,17 +41,18 @@ model Product {
 }
 
 model Transaction {
-  id         String      @id @default(cuid())
-  productId  String
-  date       DateTime
-  document   String
-  type       TransactionType
-  quantity   Float
-  loss       Float?      // Zakładana strata (np. obierki)
-  balance    Float
-  createdAt  DateTime    @default(now())
+  id             String      @id @default(cuid())
+  productId      String
+  date           DateTime
+  document       String
+  documentNumber String?     // Numer dokumentu (WZ, Faktura VAT)
+  type           TransactionType
+  quantity       Float
+  loss           Float?      // Zakładana strata (np. obierki)
+  balance        Float
+  createdAt      DateTime    @default(now())
   
-  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product        Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@map("transactions")
 }
@@ -152,7 +154,6 @@ model MealPlan {
   season                Season?             // Sezon
   description           String?             // Dodatkowy opis
   standardsId           String?             @map("standards_id") // ID norm żywieniowych
-  displayOrder          Int                 @default(0) @map("display_order") // Kolejność wyświetlania
   
   createdAt             DateTime            @default(now()) @map("created_at")
   updatedAt             DateTime            @updatedAt @map("updated_at")
@@ -165,7 +166,6 @@ model MealPlan {
   @@index([season])
   @@index([startDate])
   @@index([endDate])
-  @@index([displayOrder])
 }
 
 enum Season {

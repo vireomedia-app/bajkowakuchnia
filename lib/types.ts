@@ -31,6 +31,7 @@ export interface Transaction {
   productId: string
   date: Date
   document: string
+  documentNumber?: string | null
   type: 'INCOME' | 'OUTCOME'
   quantity: number
   loss?: number | null

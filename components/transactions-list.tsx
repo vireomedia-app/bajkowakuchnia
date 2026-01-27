@@ -82,10 +82,17 @@ export function TransactionsList({ transactions, productUnit = 'szt' }: Transact
                     </span>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-sm text-gray-900">
-                    {transaction?.document || 'Brak numeru'}
-                  </span>
+                <td className="px-6 py-4">
+                  <div className="flex flex-col">
+                    <span className="text-sm text-gray-900">
+                      {transaction?.document || 'Brak numeru'}
+                    </span>
+                    {transaction?.documentNumber && (
+                      <span className="text-xs text-blue-600 font-medium">
+                        {transaction.documentNumber}
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
                   {transaction?.type === 'INCOME' ? (
@@ -112,7 +119,7 @@ export function TransactionsList({ transactions, productUnit = 'szt' }: Transact
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
-                  {transaction?.loss && transaction.loss > 0 ? (
+                  {transaction?.loss ? (
                     <span className="text-sm font-medium text-orange-600">
                       {(transaction.loss).toFixed(2)}
                     </span>
@@ -166,14 +173,26 @@ export function TransactionsList({ transactions, productUnit = 'szt' }: Transact
             
             {/* Document */}
             <div className="mb-3">
-              <span className="text-xs text-gray-500">Dokument:</span>
-              <span className="text-sm text-gray-900 ml-2">
-                {transaction?.document || 'Brak numeru'}
-              </span>
+              <div className="flex flex-col">
+                <div>
+                  <span className="text-xs text-gray-500">Dokument:</span>
+                  <span className="text-sm text-gray-900 ml-2">
+                    {transaction?.document || 'Brak numeru'}
+                  </span>
+                </div>
+                {transaction?.documentNumber && (
+                  <div className="mt-1">
+                    <span className="text-xs text-gray-500">Nr:</span>
+                    <span className="text-xs text-blue-600 font-medium ml-2">
+                      {transaction.documentNumber}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
             
             {/* Transaction Details */}
-            <div className="grid grid-cols-4 gap-2 mb-3">
+            <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="text-center p-2 bg-gray-50 rounded">
                 <div className="text-xs text-gray-500 mb-1">Przychód</div>
                 {transaction?.type === 'INCOME' ? (
@@ -202,9 +221,9 @@ export function TransactionsList({ transactions, productUnit = 'szt' }: Transact
                 )}
               </div>
               
-              <div className="text-center p-2 bg-orange-50 rounded">
+              <div className="text-center p-2 bg-gray-50 rounded">
                 <div className="text-xs text-gray-500 mb-1">Strata</div>
-                {transaction?.loss && transaction.loss > 0 ? (
+                {transaction?.loss ? (
                   <span className="text-sm font-medium text-orange-600">
                     {(transaction.loss).toFixed(2)}
                   </span>
