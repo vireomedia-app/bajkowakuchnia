@@ -83,16 +83,9 @@ export function TransactionsList({ transactions, productUnit = 'szt' }: Transact
                   </div>
                 </td>
                 <td className="px-6 py-4">
-                  <div className="flex flex-col">
-                    <span className="text-sm text-gray-900">
-                      {transaction?.document || 'Brak numeru'}
-                    </span>
-                    {transaction?.documentNumber && (
-                      <span className="text-xs text-blue-600 font-medium">
-                        {transaction.documentNumber}
-                      </span>
-                    )}
-                  </div>
+                  <span className="text-sm font-medium text-gray-900">
+                    {transaction?.documentNumber || 'Brak numeru'}
+                  </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
                   {transaction?.type === 'INCOME' ? (
@@ -173,22 +166,10 @@ export function TransactionsList({ transactions, productUnit = 'szt' }: Transact
             
             {/* Document */}
             <div className="mb-3">
-              <div className="flex flex-col">
-                <div>
-                  <span className="text-xs text-gray-500">Dokument:</span>
-                  <span className="text-sm text-gray-900 ml-2">
-                    {transaction?.document || 'Brak numeru'}
-                  </span>
-                </div>
-                {transaction?.documentNumber && (
-                  <div className="mt-1">
-                    <span className="text-xs text-gray-500">Nr:</span>
-                    <span className="text-xs text-blue-600 font-medium ml-2">
-                      {transaction.documentNumber}
-                    </span>
-                  </div>
-                )}
-              </div>
+              <span className="text-xs text-gray-500">Dokument:</span>
+              <span className="text-sm font-medium text-gray-900 ml-2">
+                {transaction?.documentNumber || 'Brak numeru'}
+              </span>
             </div>
             
             {/* Transaction Details */}
