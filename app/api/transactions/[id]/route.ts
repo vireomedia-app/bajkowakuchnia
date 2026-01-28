@@ -1,8 +1,8 @@
 
 import { NextResponse } from 'next/server'
-import { prisma } from './lib/db'
-import { recalculateBalances } from './lib/db-utils'
-import { createBackup, cleanupOldBackups } from './lib/backup-utils'
+import { prisma } from '@/lib/db'
+import { recalculateBalances } from '@/lib/db-utils'
+import { createBackup, cleanupOldBackups } from '@/lib/backup-utils'
 
 // Update transaction
 export async function PUT(
