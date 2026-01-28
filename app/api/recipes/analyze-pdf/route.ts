@@ -79,10 +79,13 @@ Odpowiedz tylko czystym JSONem, bez bloków kodu ani markdown.`
       });
 
       if (!response.ok) {
-        throw new Error('Błąd podczas analizy PDF przez LLM API');
+        const errorData = await response.text();
+        console.error('Błąd LLM API:', response.status, errorData);
+        throw new Error(`Błąd podczas analizy PDF przez LLM API: ${response.status} - ${errorData}`);
       }
 
       const data = await response.json();
+      console.log('Odpowiedź LLM API:', JSON.stringify(data).substring(0, 200));
       fileContent = data.choices[0].message.content;
 
     } else if (fileName.endsWith('.docx')) {
@@ -145,10 +148,13 @@ Odpowiedz tylko czystym JSONem, bez bloków kodu ani markdown.`
       });
 
       if (!response.ok) {
-        throw new Error('Błąd podczas analizy DOCX przez LLM API');
+        const errorData = await response.text();
+        console.error('Błąd LLM API (DOCX):', response.status, errorData);
+        throw new Error(`Błąd podczas analizy DOCX przez LLM API: ${response.status} - ${errorData}`);
       }
 
       const data = await response.json();
+      console.log('Odpowiedź LLM API (DOCX):', JSON.stringify(data).substring(0, 200));
       fileContent = data.choices[0].message.content;
 
     } else if (fileName.endsWith('.doc')) {
