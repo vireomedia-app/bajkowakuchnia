@@ -2,11 +2,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './components/ui/dialog'
+import { Button } from './components/ui/button'
+import { Input } from './components/ui/input'
+import { Label } from './components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select'
 import { Package, ArrowLeft, Check } from 'lucide-react'
 
 interface OrderQuantityModalProps {
@@ -44,6 +44,27 @@ export function OrderQuantityModal({
   const [quantity, setQuantity] = useState('')
   const [unit, setUnit] = useState(product.unit || 'szt')
 
+  // Funkcja konwersji jednostek
+  const convertToBaseUnit = (qty: number, fromUnit: string, toUnit: string): number => {
+    // Jeśli jednostki są takie same, nie konwertuj
+    if (fromUnit === toUnit) return qty
+    
+    // Konwersje wagowe
+    if ((fromUnit === 'kg' && toUnit === 'g') || (fromUnit === 'g' && toUnit === 'kg')) {
+      if (fromUnit === 'kg' && toUnit === 'g') return qty * 1000  // kg → g
+      if (fromUnit === 'g' && toUnit === 'kg') return qty / 1000  // g → kg
+    }
+    
+    // Konwersje objętościowe
+    if ((fromUnit === 'l' && toUnit === 'ml') || (fromUnit === 'ml' && toUnit === 'l')) {
+      if (fromUnit === 'l' && toUnit === 'ml') return qty * 1000  // l → ml
+      if (fromUnit === 'ml' && toUnit === 'l') return qty / 1000  // ml → l
+    }
+    
+    // Jeśli nie ma konwersji, zwróć oryginalną wartość
+    return qty
+  }
+
   const handleSubmit = async () => {
     const qty = parseFloat(quantity)
     
@@ -51,7 +72,10 @@ export function OrderQuantityModal({
       return
     }
 
-    await onSubmit(qty, unit)
+    // Konwertuj do jednostki bazowej produktu
+    const convertedQty = convertToBaseUnit(qty, unit, product.unit)
+
+    await onSubmit(convertedQty, product.unit)
     
     // Resetuj formularz
     setQuantity('')
@@ -140,8 +164,13 @@ export function OrderQuantityModal({
                 <p className="text-sm text-green-900">
                   ✓ Zostanie dodane: <span className="font-semibold">+{quantity} {unit}</span>
                 </p>
+                {unit !== product.unit && (
+                  <p className="text-xs text-blue-700 mt-1">
+                    → Przeliczono: {convertToBaseUnit(parseFloat(quantity), unit, product.unit).toFixed(2)} {product.unit}
+                  </p>
+                )}
                 <p className="text-xs text-green-700 mt-1">
-                  Nowy stan: {(product.currentStock + parseFloat(quantity)).toFixed(2)} {product.unit}
+                  Nowy stan: {(product.currentStock + convertToBaseUnit(parseFloat(quantity), unit, product.unit)).toFixed(2)} {product.unit}
                 </p>
               </div>
             )}

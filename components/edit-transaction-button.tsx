@@ -2,7 +2,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
+import { Button } from './components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -10,16 +10,16 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+} from './components/ui/dialog'
+import { Input } from './components/ui/input'
+import { Label } from './components/ui/label'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
+} from './components/ui/select'
 import { Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
@@ -30,6 +30,7 @@ interface EditTransactionButtonProps {
     id: string
     date: Date
     document: string
+    documentNumber?: string | null
     type: 'INCOME' | 'OUTCOME'
     quantity: number
     loss?: number | null
@@ -44,6 +45,7 @@ export function EditTransactionButton({ transaction, productUnit = 'szt' }: Edit
   const [formData, setFormData] = useState({
     date: format(new Date(transaction.date), 'yyyy-MM-dd'),
     document: transaction.document,
+    documentNumber: transaction.documentNumber || '',
     type: transaction.type,
     quantity: transaction.quantity.toString(),
     loss: (transaction.loss || 0).toString()
@@ -106,14 +108,17 @@ export function EditTransactionButton({ transaction, productUnit = 'szt' }: Edit
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="document">Nr dokumentu (opcjonalnie)</Label>
+            <Label htmlFor="documentNumber">Nr dokumentu (opcjonalnie)</Label>
             <Input
-              id="document"
-              name="document"
-              value={formData.document}
-              onChange={(e) => setFormData({ ...formData, document: e.target.value })}
-              placeholder="Nr faktury, WZ, itp."
+              id="documentNumber"
+              name="documentNumber"
+              value={formData.documentNumber}
+              onChange={(e) => setFormData({ ...formData, documentNumber: e.target.value })}
+              placeholder="np. WZ/2025/01/001 lub FV 123/2025"
             />
+            <p className="text-xs text-gray-500">
+              Numer WZ, faktury VAT lub innego dokumentu dostawy
+            </p>
           </div>
 
           <div className="space-y-2">

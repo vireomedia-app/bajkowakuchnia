@@ -2,10 +2,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './components/ui/dialog'
+import { Button } from './components/ui/button'
+import { Input } from './components/ui/input'
+import { Label } from './components/ui/label'
 import { PackagePlus, X, CheckCircle, Barcode, Package, Edit3, ArrowRight } from 'lucide-react'
 import { BarcodeScanner } from './barcode-scanner'
 import { OrderQuantityModal } from './order-quantity-modal'
@@ -30,6 +30,7 @@ type ModalStep = 'document_number' | 'method_choice' | 'processing'
 export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProps) {
   const [currentStep, setCurrentStep] = useState<ModalStep>('document_number')
   const [documentNumber, setDocumentNumber] = useState('')
+  const [documentNumberError, setDocumentNumberError] = useState('')
   const [showScanner, setShowScanner] = useState(false)
   const [showQuantityModal, setShowQuantityModal] = useState(false)
   const [currentProduct, setCurrentProduct] = useState<any>(null)
@@ -129,7 +130,20 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
   }
 
   const handleDocumentNumberSubmit = () => {
-    // Zezwalamy na pusty numer dokumentu
+    // Walidacja - wymagany numer dokumentu
+    if (!documentNumber || !documentNumber.trim()) {
+      setDocumentNumberError('Numer dokumentu jest wymagany. Kliknij "Przyjmij bez numeru" jeśli chcesz pominąć.')
+      return
+    }
+    
+    // Wyczyść błąd i przejdź dalej
+    setDocumentNumberError('')
+    setCurrentStep('method_choice')
+  }
+
+  const handleSkipDocumentNumber = () => {
+    // Pomiń walidację - przejdź dalej bez numeru
+    setDocumentNumberError('')
     setCurrentStep('method_choice')
   }
 
@@ -188,7 +202,10 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
                     type="text"
                     placeholder="np. WZ/2025/01/001 lub FV 123/2025"
                     value={documentNumber}
-                    onChange={(e) => setDocumentNumber(e.target.value)}
+                    onChange={(e) => {
+                      setDocumentNumber(e.target.value)
+                      setDocumentNumberError('') // Wyczyść błąd podczas wpisywania
+                    }}
                     onKeyPress={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault()
@@ -196,13 +213,15 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
                       }
                     }}
                     autoFocus
-                    className="text-lg"
+                    className={`text-lg ${documentNumberError ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                   />
+                  {documentNumberError && (
+                    <p className="text-sm text-red-600 flex items-center space-x-1">
+                      <span>⚠️ {documentNumberError}</span>
+                    </p>
+                  )}
                   <p className="text-xs text-gray-500">
                     Ten numer będzie przypisany do wszystkich produktów w tej dostawie
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    💡 Możesz pominąć numer dokumentu jeśli nie jest wymagany
                   </p>
                 </div>
 
@@ -216,11 +235,11 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
                     Anuluj
                   </Button>
                   <Button
-                    onClick={handleDocumentNumberSubmit}
+                    onClick={handleSkipDocumentNumber}
                     variant="ghost"
-                    className="flex-1"
+                    className="flex-1 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
                   >
-                    Pomiń
+                    Przyjmij bez numeru
                   </Button>
                   <Button
                     onClick={handleDocumentNumberSubmit}

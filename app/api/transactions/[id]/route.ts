@@ -1,8 +1,8 @@
 
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
-import { recalculateBalances } from '@/lib/db-utils'
-import { createBackup, cleanupOldBackups } from '@/lib/backup-utils'
+import { prisma } from './lib/db'
+import { recalculateBalances } from './lib/db-utils'
+import { createBackup, cleanupOldBackups } from './lib/backup-utils'
 
 // Update transaction
 export async function PUT(
@@ -17,7 +17,7 @@ export async function PUT(
 
     const { id } = resolvedParams
     const body = await request.json()
-    const { date, document, type, quantity } = body
+    const { date, document, documentNumber, type, quantity } = body
 
     // Get the transaction and product
     const transaction = await prisma.transaction.findUnique({
@@ -38,6 +38,7 @@ export async function PUT(
       data: {
         date: new Date(date),
         document,
+        documentNumber: documentNumber || null,
         type,
         quantity: parseFloat(quantity)
       }
