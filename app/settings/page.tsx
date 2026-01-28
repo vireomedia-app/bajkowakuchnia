@@ -8,8 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { ArrowLeft, Settings as SettingsIcon, Save, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Settings as SettingsIcon, Save, Plus, Trash2, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import {
@@ -20,6 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { RecipeImportWizard } from '@/components/recipe-import-wizard'
 
 type MealType = 'BREAKFAST' | 'SECOND_BREAKFAST' | 'LUNCH' | 'FIRST_SNACK' | 'SECOND_SNACK' | 'DINNER' | 'OTHER'
 
@@ -39,7 +39,7 @@ interface MealSettings {
     label: string
     description: string
   }>
-  nutritionalGuidelines: string
+  nutritionalGuidelines?: string
 }
 
 const DEFAULT_MEAL_OPTIONS: MealOption[] = [
@@ -64,8 +64,6 @@ export default function SettingsPage() {
   const [showAddMealDialog, setShowAddMealDialog] = useState(false)
   const [newMealLabel, setNewMealLabel] = useState('')
   const [newMealDescription, setNewMealDescription] = useState('')
-  const [showGuidelinesDialog, setShowGuidelinesDialog] = useState(false)
-  const [guidelinesText, setGuidelinesText] = useState('')
 
   useEffect(() => {
     fetchSettings()
@@ -85,7 +83,6 @@ export default function SettingsPage() {
         customMeals: data.customMeals || [],
         nutritionalGuidelines: data.nutritionalGuidelines || ''
       })
-      setGuidelinesText(data.nutritionalGuidelines || '')
     } catch (error) {
       console.error('Error fetching settings:', error)
       toast.error('Błąd podczas pobierania ustawień')
@@ -97,7 +94,7 @@ export default function SettingsPage() {
   const handleToggleSetting = (mealType: MealType, settingType: keyof Omit<MealSettings, 'customMeals' | 'nutritionalGuidelines'>) => {
     setSettings(prev => {
       const currentArray = prev[settingType] as MealType[]
-      if (currentArray.includes(mealType)) {
+      if (currentArray && currentArray.includes(mealType)) {
         return {
           ...prev,
           [settingType]: currentArray.filter(m => m !== mealType)
@@ -105,46 +102,10 @@ export default function SettingsPage() {
       } else {
         return {
           ...prev,
-          [settingType]: [...currentArray, mealType]
+          [settingType]: [...(currentArray || []), mealType]
         }
       }
     })
-  }
-
-  const handleOpenGuidelinesEditor = () => {
-    setGuidelinesText(settings.nutritionalGuidelines)
-    setShowGuidelinesDialog(true)
-  }
-
-  const handleSaveGuidelines = async () => {
-    try {
-      // Zapisz wytyczne do state
-      const updatedSettings = {
-        ...settings,
-        nutritionalGuidelines: guidelinesText
-      }
-      
-      // Wyślij do API
-      const response = await fetch('/api/settings', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatedSettings),
-      })
-
-      if (!response.ok) {
-        throw new Error('Nie udało się zapisać wytycznych')
-      }
-
-      // Zaktualizuj lokalny state
-      setSettings(updatedSettings)
-      setShowGuidelinesDialog(false)
-      toast.success('Wytyczne żywieniowe zostały zapisane!')
-    } catch (error) {
-      console.error('Error saving guidelines:', error)
-      toast.error('Błąd podczas zapisywania wytycznych')
-    }
   }
 
   const handleAddCustomMeal = () => {
@@ -239,36 +200,9 @@ export default function SettingsPage() {
           <SettingsIcon className="w-6 h-6 text-white" />
         </div>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Ustawienia globalne</h1>
-          <p className="text-gray-600">Konfiguracja aplikacji i jadłospisów</p>
+          <h1 className="text-3xl font-bold text-gray-900">Ustawienia główne</h1>
+          <p className="text-gray-600">Konfiguracja posiłków w jadłospisie</p>
         </div>
-      </div>
-
-      {/* Szybkie akcje */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/menu/standards')}>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <SettingsIcon className="w-5 h-5 text-purple-600" />
-              Edytuj normy żywieniowe
-            </CardTitle>
-            <CardDescription>
-              Zarządzaj normami kalorycznymi i wartościami odżywczymi
-            </CardDescription>
-          </CardHeader>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={handleOpenGuidelinesEditor}>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <SettingsIcon className="w-5 h-5 text-purple-600" />
-              Edytuj wytyczne żywieniowe
-            </CardTitle>
-            <CardDescription>
-              Dostosuj tekst wytycznych wyświetlanych przy tworzeniu jadłospisów
-            </CardDescription>
-          </CardHeader>
-        </Card>
       </div>
 
       {/* Karta ustawień */}
@@ -301,153 +235,80 @@ export default function SettingsPage() {
               return (
                 <div
                   key={meal.isCustom ? mealId : meal.type}
-                  className="p-4 rounded-lg border-2 border-gray-200 bg-gray-50"
+                  className="grid md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 p-4 rounded-lg border-2 border-gray-200 bg-gray-50 items-center"
                 >
-                  {/* Desktop: Grid layout */}
-                  <div className="hidden md:grid md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 items-center">
-                    {/* Nazwa posiłku */}
-                    <div>
-                      <div className="font-semibold text-gray-900 flex items-center gap-2">
-                        {meal.label}
-                        {meal.isCustom && (
-                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Własny</span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600 mt-1">{meal.description}</p>
-                    </div>
-
-                    {/* Checkboxy */}
-                    {!meal.isCustom && (
-                      <>
-                        <div className="flex items-center justify-center">
-                          <Checkbox
-                            id={`${meal.type}_calories`}
-                            checked={includeInCal}
-                            onCheckedChange={() => handleToggleSetting(meal.type, 'includeInCalories')}
-                            disabled={isSaving}
-                          />
-                          <Label htmlFor={`${meal.type}_calories`} className="sr-only">
-                            Wlicz do kaloryczności
-                          </Label>
-                        </div>
-
-                        <div className="flex items-center justify-center">
-                          <Checkbox
-                            id={`${meal.type}_parents`}
-                            checked={exportParents}
-                            onCheckedChange={() => handleToggleSetting(meal.type, 'exportForParents')}
-                            disabled={isSaving}
-                          />
-                          <Label htmlFor={`${meal.type}_parents`} className="sr-only">
-                            Eksport dla rodziców
-                          </Label>
-                        </div>
-
-                        <div className="flex items-center justify-center">
-                          <Checkbox
-                            id={`${meal.type}_sanepid`}
-                            checked={exportSanepid}
-                            onCheckedChange={() => handleToggleSetting(meal.type, 'exportForSanepid')}
-                            disabled={isSaving}
-                          />
-                          <Label htmlFor={`${meal.type}_sanepid`} className="sr-only">
-                            Eksport dla sanepidu
-                          </Label>
-                        </div>
-                      </>
-                    )}
-
-                    {meal.isCustom && (
-                      <div className="col-span-3 text-sm text-gray-500 text-center">
-                        Własne posiłki nie są uwzględniane w eksportach
-                      </div>
-                    )}
-
-                    {/* Przycisk usuwania dla własnych posiłków */}
-                    <div className="flex justify-end">
+                  {/* Nazwa posiłku */}
+                  <div>
+                    <div className="font-semibold text-gray-900 flex items-center gap-2">
+                      {meal.label}
                       {meal.isCustom && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveCustomMeal(mealId as string)}
-                          disabled={isSaving}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Własny</span>
                       )}
                     </div>
+                    <p className="text-sm text-gray-600 mt-1">{meal.description}</p>
                   </div>
 
-                  {/* Mobile: Stack layout */}
-                  <div className="md:hidden space-y-3">
-                    {/* Nazwa posiłku */}
-                    <div>
-                      <div className="font-semibold text-gray-900 flex items-center gap-2">
-                        {meal.label}
-                        {meal.isCustom && (
-                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Własny</span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600 mt-1">{meal.description}</p>
-                    </div>
-
-                    {/* Checkboxy dla mobile */}
-                    {!meal.isCustom && (
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="flex flex-col items-center gap-2 p-2 bg-white rounded border">
-                          <Checkbox
-                            id={`${meal.type}_calories_mobile`}
-                            checked={includeInCal}
-                            onCheckedChange={() => handleToggleSetting(meal.type, 'includeInCalories')}
-                            disabled={isSaving}
-                          />
-                          <Label htmlFor={`${meal.type}_calories_mobile`} className="text-xs text-center leading-tight">
-                            Kalor.
-                          </Label>
-                        </div>
-
-                        <div className="flex flex-col items-center gap-2 p-2 bg-white rounded border">
-                          <Checkbox
-                            id={`${meal.type}_parents_mobile`}
-                            checked={exportParents}
-                            onCheckedChange={() => handleToggleSetting(meal.type, 'exportForParents')}
-                            disabled={isSaving}
-                          />
-                          <Label htmlFor={`${meal.type}_parents_mobile`} className="text-xs text-center leading-tight">
-                            Rodzice
-                          </Label>
-                        </div>
-
-                        <div className="flex flex-col items-center gap-2 p-2 bg-white rounded border">
-                          <Checkbox
-                            id={`${meal.type}_sanepid_mobile`}
-                            checked={exportSanepid}
-                            onCheckedChange={() => handleToggleSetting(meal.type, 'exportForSanepid')}
-                            disabled={isSaving}
-                          />
-                          <Label htmlFor={`${meal.type}_sanepid_mobile`} className="text-xs text-center leading-tight">
-                            Sanepid
-                          </Label>
-                        </div>
-                      </div>
-                    )}
-
-                    {meal.isCustom && (
-                      <div className="flex justify-between items-center">
-                        <div className="text-sm text-gray-500">
-                          Własne posiłki nie są uwzględniane w eksportach
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveCustomMeal(mealId as string)}
+                  {/* Checkboxy */}
+                  {!meal.isCustom && (
+                    <>
+                      <div className="flex items-center justify-center">
+                        <Checkbox
+                          id={`${meal.type}_calories`}
+                          checked={includeInCal}
+                          onCheckedChange={() => handleToggleSetting(meal.type, 'includeInCalories')}
                           disabled={isSaving}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        />
+                        <Label htmlFor={`${meal.type}_calories`} className="sr-only">
+                          Wlicz do kaloryczności
+                        </Label>
                       </div>
+
+                      <div className="flex items-center justify-center">
+                        <Checkbox
+                          id={`${meal.type}_parents`}
+                          checked={exportParents}
+                          onCheckedChange={() => handleToggleSetting(meal.type, 'exportForParents')}
+                          disabled={isSaving}
+                        />
+                        <Label htmlFor={`${meal.type}_parents`} className="sr-only">
+                          Eksport dla rodziców
+                        </Label>
+                      </div>
+
+                      <div className="flex items-center justify-center">
+                        <Checkbox
+                          id={`${meal.type}_sanepid`}
+                          checked={exportSanepid}
+                          onCheckedChange={() => handleToggleSetting(meal.type, 'exportForSanepid')}
+                          disabled={isSaving}
+                        />
+                        <Label htmlFor={`${meal.type}_sanepid`} className="sr-only">
+                          Eksport dla sanepidu
+                        </Label>
+                      </div>
+                    </>
+                  )}
+
+                  {meal.isCustom && (
+                    <>
+                      <div className="md:col-span-3 text-sm text-gray-500 text-center">
+                        Własne posiłki nie są uwzględniane w eksportach
+                      </div>
+                    </>
+                  )}
+
+                  {/* Przycisk usuwania dla własnych posiłków */}
+                  <div className="flex justify-end">
+                    {meal.isCustom && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveCustomMeal(mealId as string)}
+                        disabled={isSaving}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -552,41 +413,75 @@ export default function SettingsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog edycji wytycznych żywieniowych */}
-      <Dialog open={showGuidelinesDialog} onOpenChange={setShowGuidelinesDialog}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edytuj wytyczne żywieniowe</DialogTitle>
-            <DialogDescription>
-              Dostosuj tekst wytycznych wyświetlanych przy tworzeniu jadłospisów. Wytyczne są formatowane automatycznie - każda nowa linia tworzy osobny akapit.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="guidelines">Treść wytycznych</Label>
-              <Textarea
-                id="guidelines"
-                value={guidelinesText}
-                onChange={(e) => setGuidelinesText(e.target.value)}
-                placeholder="Wprowadź wytyczne żywieniowe..."
-                className="min-h-[400px] font-mono text-sm"
-              />
-              <p className="text-xs text-gray-500">
-                Pierwsze 3-4 zdania będą widoczne domyślnie, reszta po kliknięciu "Rozwiń"
-              </p>
-            </div>
+      {/* Edycja norm żywieniowych */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Normy żywieniowe</CardTitle>
+          <CardDescription>
+            Zarządzaj normami wartości odżywczych dla różnych grup wiekowych
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link href="/menu/standards">
+            <Button variant="outline" className="w-full">
+              <SettingsIcon className="w-4 h-4 mr-2" />
+              Edytuj normy żywieniowe
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
+
+      {/* Edycja wytycznych żywieniowych */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Wytyczne żywieniowe</CardTitle>
+          <CardDescription>
+            Tekst wyświetlany przy tworzeniu jadłospisów jako pomoc i wskazówki
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="guidelines">Treść wytycznych</Label>
+            <textarea
+              id="guidelines"
+              className="w-full min-h-[200px] p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              value={settings.nutritionalGuidelines || ''}
+              onChange={(e) => setSettings(prev => ({ ...prev, nutritionalGuidelines: e.target.value }))}
+              placeholder="Wprowadź wytyczne żywieniowe..."
+            />
+            <p className="text-sm text-gray-500">
+              Te wytyczne będą widoczne przy tworzeniu nowych jadłospisów. Pierwsze 3-4 zdania będą widoczne od razu, reszta po rozwinięciu.
+            </p>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowGuidelinesDialog(false)}>
-              Anuluj
-            </Button>
-            <Button onClick={handleSaveGuidelines}>
-              <Save className="w-4 h-4 mr-2" />
-              Zapisz wytyczne
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </CardContent>
+      </Card>
+
+      {/* Import receptur z PDF */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <FileText className="w-5 h-5" />
+            <span>Import receptur z PDF/DOCX</span>
+          </CardTitle>
+          <CardDescription>
+            Wrzuć plik PDF lub DOCX z recepturami. System automatycznie wyciągnie wszystkie receptury
+            i zaproponuje dopasowanie składników do istniejących produktów w magazynie.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <RecipeImportWizard />
+          
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 className="font-medium text-blue-900 mb-2">Funkcje inteligentnego importu:</h4>
+            <ul className="list-disc list-inside text-sm text-blue-800 space-y-1">
+              <li>Automatyczne wyciągnięcie WSZYSTKICH receptur z pliku</li>
+              <li>Sugestie dopasowania składników do istniejących produktów</li>
+              <li>Możliwość zaznaczania wielu składników i wykonywania akcji zbiorczych</li>
+              <li>Wybór: użyj istniejącego produktu, stwórz nowy, lub pomiń</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
