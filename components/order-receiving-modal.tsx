@@ -1,12 +1,12 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { PackagePlus, X, CheckCircle, Barcode, Package, Edit3, ArrowRight } from 'lucide-react'
+import { PackagePlus, X, CheckCircle, Barcode, Package, Edit3, ArrowRight, Bluetooth, Camera, Loader2 } from 'lucide-react'
 import { BarcodeScanner } from './barcode-scanner'
 import { OrderQuantityModal } from './order-quantity-modal'
 import { SearchProductForManualAdd } from './search-product-for-manual-add'
@@ -36,7 +36,106 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
   const [currentProduct, setCurrentProduct] = useState<any>(null)
   const [scannedProducts, setScannedProducts] = useState<ScannedProduct[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
-  const [addingMethod, setAddingMethod] = useState<'scan' | 'manual' | null>(null)
+  const [addingMethod, setAddingMethod] = useState<'scan' | 'manual' | 'bluetooth' | null>(null)
+  
+  // Bluetooth scanner state
+  const [bluetoothBarcode, setBluetoothBarcode] = useState('')
+  const [isSearchingBluetooth, setIsSearchingBluetooth] = useState(false)
+  const [showNotFoundFlash, setShowNotFoundFlash] = useState(false)
+  const [lastNotFoundBarcode, setLastNotFoundBarcode] = useState('')
+  const bluetoothInputRef = useRef<HTMLInputElement>(null)
+  const barcodeBuffer = useRef('')
+  const lastKeyTime = useRef(0)
+
+  // Focus na input Bluetooth
+  const focusBluetoothInput = useCallback(() => {
+    setTimeout(() => {
+      if (bluetoothInputRef.current) {
+        bluetoothInputRef.current.focus()
+        bluetoothInputRef.current.select()
+      }
+    }, 50)
+  }, [])
+
+  // Focus input when switching to bluetooth mode
+  useEffect(() => {
+    if (addingMethod === 'bluetooth' && currentStep === 'processing' && !showQuantityModal) {
+      focusBluetoothInput()
+    }
+  }, [addingMethod, currentStep, showQuantityModal, focusBluetoothInput])
+
+  // Handle keyboard input from Bluetooth scanner
+  useEffect(() => {
+    if (addingMethod !== 'bluetooth' || currentStep !== 'processing' || showQuantityModal) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const now = Date.now()
+      
+      // If more than 100ms passed, it's probably manual typing - reset buffer
+      if (now - lastKeyTime.current > 100) {
+        barcodeBuffer.current = ''
+      }
+      lastKeyTime.current = now
+
+      // Enter key - process barcode
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        const barcode = barcodeBuffer.current.trim() || bluetoothBarcode.trim()
+        if (barcode) {
+          handleBluetoothScan(barcode)
+          barcodeBuffer.current = ''
+          setBluetoothBarcode('')
+        }
+        return
+      }
+
+      // Collect characters for barcode
+      if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        barcodeBuffer.current += e.key
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [addingMethod, currentStep, showQuantityModal, bluetoothBarcode])
+
+  // Bluetooth scan handler - find existing product
+  const handleBluetoothScan = async (barcode: string) => {
+    if (!barcode || isSearchingBluetooth) return
+
+    setIsSearchingBluetooth(true)
+
+    try {
+      // Search for product by barcode in our database
+      const response = await fetch(`/api/products/barcode?code=${encodeURIComponent(barcode)}`)
+      const data = await response.json()
+
+      if (response.status === 409 && data.existingProduct) {
+        // Product found in database - show quantity modal
+        setCurrentProduct(data.existingProduct)
+        setShowQuantityModal(true)
+        toast.success(`Znaleziono: ${data.existingProduct.name}`)
+      } else if (response.ok && data.name) {
+        // Product found in Open Food Facts but not in our database
+        setLastNotFoundBarcode(barcode)
+        setShowNotFoundFlash(true)
+        setTimeout(() => setShowNotFoundFlash(false), 2500)
+        toast.error(`Produkt "${data.name}" nie istnieje w magazynie. Najpierw go dodaj.`)
+      } else {
+        // Product not found anywhere
+        setLastNotFoundBarcode(barcode)
+        setShowNotFoundFlash(true)
+        setTimeout(() => setShowNotFoundFlash(false), 2500)
+        toast.error(`Nie znaleziono produktu o kodzie: ${barcode}`)
+      }
+    } catch (error) {
+      console.error('Error searching barcode:', error)
+      toast.error('Błąd podczas wyszukiwania produktu')
+    } finally {
+      setIsSearchingBluetooth(false)
+      focusBluetoothInput()
+    }
+  }
 
   const handleScanSuccess = async (productData: any) => {
     // BarcodeScanner w trybie receive_order przekazuje tylko istniejące produkty
@@ -95,6 +194,9 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
       
       if (addingMethod === 'scan') {
         setShowScanner(true)
+      } else if (addingMethod === 'bluetooth') {
+        // W trybie Bluetooth - focus na input
+        focusBluetoothInput()
       } else {
         // W trybie ręcznym pozostajemy w głównym oknie
         setCurrentStep('processing')
@@ -126,6 +228,8 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
     setCurrentStep('document_number')
     setDocumentNumber('')
     setAddingMethod(null)
+    setBluetoothBarcode('')
+    barcodeBuffer.current = ''
     onClose()
   }
 
@@ -147,12 +251,15 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
     setCurrentStep('method_choice')
   }
 
-  const handleMethodChoice = (method: 'scan' | 'manual') => {
+  const handleMethodChoice = (method: 'scan' | 'manual' | 'bluetooth') => {
     setAddingMethod(method)
     setCurrentStep('processing')
     
     if (method === 'scan') {
       setShowScanner(true)
+    } else if (method === 'bluetooth') {
+      // Focus na input po przejściu do ekranu przetwarzania
+      setTimeout(() => focusBluetoothInput(), 100)
     }
   }
 
@@ -164,6 +271,17 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
 
   return (
     <>
+      {/* Red flash overlay for not found products (Bluetooth mode) */}
+      {showNotFoundFlash && (
+        <div className="fixed inset-0 z-[100] bg-red-600 flex items-center justify-center animate-pulse">
+          <div className="text-center text-white">
+            <X className="w-32 h-32 mx-auto mb-4" strokeWidth={3} />
+            <p className="text-3xl font-bold">NIE ZNALEZIONO</p>
+            <p className="text-xl mt-2 font-mono">{lastNotFoundBarcode}</p>
+          </div>
+        </div>
+      )}
+
       <Dialog open={isOpen && !showScanner && !showQuantityModal} onOpenChange={handleClose}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
           <DialogHeader>
@@ -264,20 +382,31 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
                 <div className="space-y-3">
                   <Button
                     onClick={() => handleMethodChoice('scan')}
-                    className="w-full h-auto py-6 bg-green-600 hover:bg-green-700 flex flex-col items-center space-y-2"
+                    className="w-full h-auto py-5 bg-green-600 hover:bg-green-700 flex flex-col items-center space-y-2"
                   >
-                    <Barcode className="w-12 h-12" />
+                    <Camera className="w-10 h-10" />
                     <div className="text-center">
-                      <p className="font-semibold text-lg">Skanowanie kodów kreskowych</p>
-                      <p className="text-sm opacity-90">Dla produktów z kodem kreskowym</p>
+                      <p className="font-semibold text-lg">Kamera telefonu/tabletu</p>
+                      <p className="text-sm opacity-90">Skanowanie aparatem urządzenia</p>
+                    </div>
+                  </Button>
+
+                  <Button
+                    onClick={() => handleMethodChoice('bluetooth')}
+                    className="w-full h-auto py-5 bg-orange-600 hover:bg-orange-700 flex flex-col items-center space-y-2"
+                  >
+                    <Bluetooth className="w-10 h-10" />
+                    <div className="text-center">
+                      <p className="font-semibold text-lg">Skaner Bluetooth</p>
+                      <p className="text-sm opacity-90">Skaner laserowy podłączony przez Bluetooth</p>
                     </div>
                   </Button>
 
                   <Button
                     onClick={() => handleMethodChoice('manual')}
-                    className="w-full h-auto py-6 bg-blue-600 hover:bg-blue-700 flex flex-col items-center space-y-2"
+                    className="w-full h-auto py-5 bg-blue-600 hover:bg-blue-700 flex flex-col items-center space-y-2"
                   >
-                    <Edit3 className="w-12 h-12" />
+                    <Edit3 className="w-10 h-10" />
                     <div className="text-center">
                       <p className="font-semibold text-lg">Dodawanie ręczne</p>
                       <p className="text-sm opacity-90">Dla produktów bez kodu (warzywa, owoce itp.)</p>
@@ -357,6 +486,41 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
                     <p className="text-sm text-gray-500">
                       Kliknij &quot;Wyszukaj produkt&quot; i wybierz z listy
                     </p>
+                  </div>
+                )}
+
+                {/* Interfejs dla skanera Bluetooth */}
+                {addingMethod === 'bluetooth' && (
+                  <div className="space-y-4">
+                    <div className="flex gap-2 items-center p-4 bg-orange-50 rounded-lg border border-orange-200">
+                      <Bluetooth className="w-6 h-6 text-orange-600 flex-shrink-0" />
+                      <div className="flex-1">
+                        <Input
+                          ref={bluetoothInputRef}
+                          value={bluetoothBarcode}
+                          onChange={(e) => setBluetoothBarcode(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              const barcode = bluetoothBarcode.trim()
+                              if (barcode) {
+                                handleBluetoothScan(barcode)
+                                setBluetoothBarcode('')
+                              }
+                            }
+                          }}
+                          placeholder="Zeskanuj kod skanerem Bluetooth..."
+                          className="font-mono text-lg"
+                          disabled={isSearchingBluetooth}
+                          autoFocus
+                        />
+                      </div>
+                      {isSearchingBluetooth && <Loader2 className="w-5 h-5 animate-spin text-orange-500" />}
+                    </div>
+                    <div className="text-center text-sm text-gray-500">
+                      <p>Skieruj skaner na kod kreskowy produktu.</p>
+                      <p>Skaner automatycznie wyśle kod i przejdzie do następnego produktu.</p>
+                    </div>
                   </div>
                 )}
 
