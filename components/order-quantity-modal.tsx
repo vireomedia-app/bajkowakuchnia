@@ -1,13 +1,13 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Package, ArrowLeft, Check } from 'lucide-react'
+import { Package, ArrowLeft, Check, Keyboard } from 'lucide-react'
 
 interface OrderQuantityModalProps {
   isOpen: boolean
@@ -43,6 +43,32 @@ export function OrderQuantityModal({
 }: OrderQuantityModalProps) {
   const [quantity, setQuantity] = useState('')
   const [unit, setUnit] = useState(product.unit || 'szt')
+  const quantityInputRef = useRef<HTMLInputElement>(null)
+
+  // Funkcja wymuszająca pokazanie klawiatury na urządzeniach mobilnych
+  // (problem gdy skaner Bluetooth jest podłączony jako zewnętrzna klawiatura)
+  const forceShowKeyboard = () => {
+    if (quantityInputRef.current) {
+      // Blur i focus z małym opóźnieniem wymusza otwarcie klawiatury
+      quantityInputRef.current.blur()
+      setTimeout(() => {
+        if (quantityInputRef.current) {
+          quantityInputRef.current.focus()
+          // Na niektórych urządzeniach potrzebne jest też kliknięcie
+          quantityInputRef.current.click()
+        }
+      }, 100)
+    }
+  }
+
+  // Auto-focus gdy modal się otworzy
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => {
+        forceShowKeyboard()
+      }, 300)
+    }
+  }, [isOpen])
 
   // Funkcja konwersji jednostek
   const convertToBaseUnit = (qty: number, fromUnit: string, toUnit: string): number => {
@@ -129,18 +155,34 @@ export function OrderQuantityModal({
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="quantity">Ilość dostarczona</Label>
-              <Input
-                id="quantity"
-                type="number"
-                step="0.00001"
-                min="0.01"
-                placeholder="np. 10.5"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                onKeyPress={handleKeyPress}
-                autoFocus
-                className="text-lg"
-              />
+              <div className="flex gap-2">
+                <Input
+                  ref={quantityInputRef}
+                  id="quantity"
+                  type="number"
+                  inputMode="decimal"
+                  step="0.00001"
+                  min="0.01"
+                  placeholder="np. 10.5"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  autoFocus
+                  className="text-lg flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={forceShowKeyboard}
+                  className="px-3 bg-blue-50 border-blue-200 hover:bg-blue-100"
+                  title="Pokaż klawiaturę"
+                >
+                  <Keyboard className="w-5 h-5 text-blue-600" />
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500">
+                💡 Jeśli klawiatura się nie pojawia, kliknij ikonę klawiatury
+              </p>
             </div>
 
             <div className="space-y-2">
