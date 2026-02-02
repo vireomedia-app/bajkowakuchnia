@@ -41,18 +41,27 @@ export function BulkProductScanner({ isOpen, onClose, onProductsAdded }: BulkPro
   const barcodeBuffer = useRef('')
   const lastKeyTime = useRef(0)
 
+  // Funkcja do ustawienia focusu na input
+  const focusInput = useCallback(() => {
+    // Małe opóźnienie żeby DOM zdążył się zaktualizować
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus()
+        inputRef.current.select()
+      }
+    }, 50)
+  }, [])
+
   // Focus input when modal opens
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => {
-        inputRef.current?.focus()
-      }, 100)
+      focusInput()
     } else {
       // Reset state when modal closes
       setCurrentBarcode('')
       barcodeBuffer.current = ''
     }
-  }, [isOpen])
+  }, [isOpen, focusInput])
 
   // Handle keyboard input from Bluetooth scanner
   useEffect(() => {
@@ -153,12 +162,13 @@ export function BulkProductScanner({ isOpen, onClose, onProductsAdded }: BulkPro
       toast.error('Błąd podczas skanowania')
     } finally {
       setIsSearching(false)
-      inputRef.current?.focus()
+      focusInput()
     }
-  }, [isSearching, scannedProducts])
+  }, [isSearching, scannedProducts, focusInput])
 
   const handleRemoveProduct = (id: string) => {
     setScannedProducts(prev => prev.filter(p => p.id !== id))
+    focusInput()
   }
 
   const handleUpdateProductName = (id: string, newName: string) => {
@@ -187,7 +197,7 @@ export function BulkProductScanner({ isOpen, onClose, onProductsAdded }: BulkPro
           body: JSON.stringify({
             name: product.name,
             unit: product.unit,
-            currentStock: 0,
+            initialStock: 0, // API wymaga initialStock, nie currentStock
             barcode: product.barcode,
             manufacturer: product.manufacturer || '',
             calories: product.calories || null,
@@ -202,11 +212,11 @@ export function BulkProductScanner({ isOpen, onClose, onProductsAdded }: BulkPro
           savedCount++
         } else {
           const error = await response.json()
-          console.error('Error saving product:', error)
+          console.error('Error saving product:', product.name, error)
           errorCount++
         }
       } catch (error) {
-        console.error('Error saving product:', error)
+        console.error('Error saving product:', product.name, error)
         errorCount++
       }
     }
