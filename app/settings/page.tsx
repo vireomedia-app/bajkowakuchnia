@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { ArrowLeft, Settings as SettingsIcon, Save, Plus, Trash2, FileText } from 'lucide-react'
+import { ArrowLeft, Settings as SettingsIcon, Save, Plus, Trash2, FileText, Barcode } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import {
@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { RecipeImportWizard } from '@/components/recipe-import-wizard'
+import { BulkProductScanner } from '@/components/bulk-product-scanner'
 
 type MealType = 'BREAKFAST' | 'SECOND_BREAKFAST' | 'LUNCH' | 'FIRST_SNACK' | 'SECOND_SNACK' | 'DINNER' | 'OTHER'
 
@@ -64,6 +65,7 @@ export default function SettingsPage() {
   const [showAddMealDialog, setShowAddMealDialog] = useState(false)
   const [newMealLabel, setNewMealLabel] = useState('')
   const [newMealDescription, setNewMealDescription] = useState('')
+  const [showBulkScanner, setShowBulkScanner] = useState(false)
 
   useEffect(() => {
     fetchSettings()
@@ -456,6 +458,41 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Masowe dodawanie produktów */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Barcode className="w-5 h-5" />
+            <span>Masowe dodawanie produktów</span>
+          </CardTitle>
+          <CardDescription>
+            Użyj czytnika kodów kreskowych Bluetooth do szybkiego dodawania wielu produktów.
+            Produkty są wyszukiwane w bazie Open Food Facts.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Button 
+            onClick={() => setShowBulkScanner(true)}
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white text-lg py-6"
+          >
+            <Barcode className="w-6 h-6 mr-3" />
+            DODAJ DUŻO PRODUKTÓW
+          </Button>
+          
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+            <h4 className="font-medium text-orange-900 mb-2">Jak to działa:</h4>
+            <ol className="list-decimal list-inside text-sm text-orange-800 space-y-1">
+              <li>Podłącz czytnik kodów kreskowych Bluetooth do telefonu/komputera</li>
+              <li>Kliknij przycisk powyżej</li>
+              <li>Skanuj produkty - czytnik automatycznie wysyła kod i klika Enter</li>
+              <li><span className="text-green-700 font-medium">✓ Zielony</span> = produkt znaleziony w Open Food Facts</li>
+              <li><span className="text-red-700 font-medium">✗ Czerwony</span> = produkt nieznaleziony (wymaga ręcznego uzupełnienia)</li>
+              <li>Na końcu zapisz wszystkie produkty jednym kliknięciem</li>
+            </ol>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Import receptur z PDF */}
       <Card>
         <CardHeader>
@@ -482,6 +519,15 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Bulk Product Scanner Modal */}
+      <BulkProductScanner
+        isOpen={showBulkScanner}
+        onClose={() => setShowBulkScanner(false)}
+        onProductsAdded={() => {
+          toast.success('Produkty zostały dodane do magazynu')
+        }}
+      />
     </div>
   )
 }
