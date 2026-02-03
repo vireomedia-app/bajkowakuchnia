@@ -179,10 +179,11 @@ export function BarcodeScanner({ isOpen, onClose, onScanSuccess, mode = 'add_pro
       const productData = await response.json()
       
       if (mode === 'receive_order') {
-        // W trybie przyjmowania zamówienia - nowy produkt to błąd
-        toast.error('Ten produkt nie jest jeszcze w bazie. Najpierw dodaj go do inwentarza.', { id: 'barcode-search', duration: 5000 })
-        setError('Produkt nie jest w bazie')
-        setIsLoading(false)
+        // W trybie przyjmowania zamówienia - produkt nie jest w bazie
+        // Przekaż kod do rodzica, który pokaże modal dodawania
+        toast.dismiss('barcode-search')
+        onScanSuccess({ _notInDatabase: true, barcode: barcode })
+        onClose()
       } else {
         // W trybie dodawania produktu - nowy produkt to sukces
         toast.success('Produkt znaleziony!', { id: 'barcode-search' })
@@ -200,15 +201,11 @@ export function BarcodeScanner({ isOpen, onClose, onScanSuccess, mode = 'add_pro
         setShowManualAddDialog(true)
         setIsLoading(false)
       } else {
-        // W trybie przyjmowania zamówienia - pokaż błąd i restartuj skaner
-        toast.error(err.message || 'Nie znaleziono produktu', { id: 'barcode-search' })
-        setError(err.message)
-        setIsLoading(false)
-        // Restart scanner po błędzie
-        setTimeout(() => {
-          setError(null)
-          startScanner()
-        }, 2000)
+        // W trybie przyjmowania zamówienia - produkt nie znaleziony
+        // Przekaż kod do rodzica, który pokaże modal dodawania
+        toast.dismiss('barcode-search')
+        onScanSuccess({ _notInDatabase: true, barcode: barcode })
+        onClose()
       }
     }
   }

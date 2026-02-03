@@ -6,10 +6,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { PackagePlus, X, CheckCircle, Barcode, Package, Edit3, ArrowRight, Bluetooth, Camera, Loader2 } from 'lucide-react'
-import { BarcodeScanner } from './barcode-scanner'
-import { OrderQuantityModal } from './order-quantity-modal'
-import { SearchProductForManualAdd } from './search-product-for-manual-add'
+import { PackagePlus, X, CheckCircle, Barcode, Package, Edit3, ArrowRight, Bluetooth, Camera, Loader2, Keyboard } from 'lucide-react'
+import { BarcodeScanner } from '@/components/barcode-scanner'
+import { OrderQuantityModal } from '@/components/order-quantity-modal'
+import { SearchProductForManualAdd } from '@/components/search-product-for-manual-add'
+import { AddProductFromBarcodeModal } from '@/components/add-product-from-barcode-modal'
 import { toast } from 'sonner'
 
 interface ScannedProduct {
@@ -26,6 +27,7 @@ interface OrderReceivingModalProps {
 }
 
 type ModalStep = 'document_number' | 'method_choice' | 'processing'
+type AddingMethod = 'scan' | 'manual' | 'bluetooth' | 'manual_barcode' | null
 
 export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProps) {
   const [currentStep, setCurrentStep] = useState<ModalStep>('document_number')
@@ -36,7 +38,16 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
   const [currentProduct, setCurrentProduct] = useState<any>(null)
   const [scannedProducts, setScannedProducts] = useState<ScannedProduct[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
-  const [addingMethod, setAddingMethod] = useState<'scan' | 'manual' | 'bluetooth' | null>(null)
+  const [addingMethod, setAddingMethod] = useState<AddingMethod>(null)
+  
+  // Modal dodawania produktu z kodu kreskowego
+  const [showAddProductModal, setShowAddProductModal] = useState(false)
+  const [pendingBarcode, setPendingBarcode] = useState('')
+  
+  // Manual barcode entry state
+  const [manualBarcodeInput, setManualBarcodeInput] = useState('')
+  const [isSearchingManualBarcode, setIsSearchingManualBarcode] = useState(false)
+  const manualBarcodeInputRef = useRef<HTMLInputElement>(null)
   
   // Bluetooth scanner state
   const [bluetoothBarcode, setBluetoothBarcode] = useState('')
@@ -99,11 +110,14 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [addingMethod, currentStep, showQuantityModal, bluetoothBarcode])
 
-  // Bluetooth scan handler - find existing product
-  const handleBluetoothScan = async (barcode: string) => {
-    if (!barcode || isSearchingBluetooth) return
+  // Uniwersalna funkcja wyszukiwania produktu po kodzie kreskowym
+  // Używana przez: Bluetooth scanner, ręczne wpisywanie kodu, kamerę
+  const handleBarcodeSearch = async (barcode: string, method: AddingMethod) => {
+    if (!barcode) return
 
-    setIsSearchingBluetooth(true)
+    const setLoading = method === 'bluetooth' ? setIsSearchingBluetooth : setIsSearchingManualBarcode
+
+    setLoading(true)
 
     try {
       // Search for product by barcode in our database
@@ -111,37 +125,57 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
       const data = await response.json()
 
       if (response.status === 409 && data.existingProduct) {
-        // Product found in database - show quantity modal
+        // Produkt znaleziony w bazie - pokaż modal ilości
         setCurrentProduct(data.existingProduct)
         setShowQuantityModal(true)
         toast.success(`Znaleziono: ${data.existingProduct.name}`)
-      } else if (response.ok && data.name) {
-        // Product found in Open Food Facts but not in our database
-        setLastNotFoundBarcode(barcode)
-        setShowNotFoundFlash(true)
-        setTimeout(() => setShowNotFoundFlash(false), 2500)
-        toast.error(`Produkt "${data.name}" nie istnieje w magazynie. Najpierw go dodaj.`)
       } else {
-        // Product not found anywhere
+        // Produkt NIE jest w naszej bazie - pokaż modal dodawania
+        setPendingBarcode(barcode)
+        setShowAddProductModal(true)
+        // Króki flash żeby użytkownik widział że coś się stało
         setLastNotFoundBarcode(barcode)
         setShowNotFoundFlash(true)
-        setTimeout(() => setShowNotFoundFlash(false), 2500)
-        toast.error(`Nie znaleziono produktu o kodzie: ${barcode}`)
+        setTimeout(() => setShowNotFoundFlash(false), 800)
       }
     } catch (error) {
       console.error('Error searching barcode:', error)
       toast.error('Błąd podczas wyszukiwania produktu')
     } finally {
-      setIsSearchingBluetooth(false)
-      focusBluetoothInput()
+      setLoading(false)
     }
   }
 
+  // Bluetooth scan handler
+  const handleBluetoothScan = async (barcode: string) => {
+    if (!barcode || isSearchingBluetooth) return
+    await handleBarcodeSearch(barcode, 'bluetooth')
+    focusBluetoothInput()
+  }
+  
+  // Manual barcode entry handler
+  const handleManualBarcodeSearch = async () => {
+    const barcode = manualBarcodeInput.trim()
+    if (!barcode || isSearchingManualBarcode) return
+    await handleBarcodeSearch(barcode, 'manual_barcode')
+    setManualBarcodeInput('')
+    // Focus back on input
+    setTimeout(() => manualBarcodeInputRef.current?.focus(), 100)
+  }
+
   const handleScanSuccess = async (productData: any) => {
-    // BarcodeScanner w trybie receive_order przekazuje tylko istniejące produkty
-    // więc możemy od razu pokazać modal ilości
-    setCurrentProduct(productData)
     setShowScanner(false)
+    
+    // Sprawdź czy produkt nie jest w bazie (flaga z BarcodeScanner)
+    if (productData._notInDatabase && productData.barcode) {
+      // Produkt nie jest w bazie - pokaż modal dodawania
+      setPendingBarcode(productData.barcode)
+      setShowAddProductModal(true)
+      return
+    }
+    
+    // Produkt istnieje - pokaż modal ilości
+    setCurrentProduct(productData)
     setShowQuantityModal(true)
   }
 
@@ -225,12 +259,39 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
     setCurrentProduct(null)
     setShowScanner(false)
     setShowQuantityModal(false)
+    setShowAddProductModal(false)
+    setPendingBarcode('')
     setCurrentStep('document_number')
     setDocumentNumber('')
     setAddingMethod(null)
     setBluetoothBarcode('')
+    setManualBarcodeInput('')
     barcodeBuffer.current = ''
     onClose()
+  }
+
+  // Handler gdy produkt zostanie dodany z modalu AddProductFromBarcodeModal
+  const handleProductAddedFromBarcode = (newProduct: any) => {
+    // Po dodaniu produktu - od razu pokaż modal ilości
+    setShowAddProductModal(false)
+    setPendingBarcode('')
+    setCurrentProduct(newProduct)
+    setShowQuantityModal(true)
+    toast.success(`Dodano produkt: ${newProduct.name}. Podaj ilość.`)
+  }
+
+  // Handler gdy modal dodawania produktu zostanie zamknięty bez dodania
+  const handleAddProductModalClose = () => {
+    setShowAddProductModal(false)
+    setPendingBarcode('')
+    // Wróć do odpowiedniej metody skanowania
+    if (addingMethod === 'bluetooth') {
+      focusBluetoothInput()
+    } else if (addingMethod === 'manual_barcode') {
+      setTimeout(() => manualBarcodeInputRef.current?.focus(), 100)
+    } else if (addingMethod === 'scan') {
+      setShowScanner(true)
+    }
   }
 
   const handleDocumentNumberSubmit = () => {
@@ -251,7 +312,7 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
     setCurrentStep('method_choice')
   }
 
-  const handleMethodChoice = (method: 'scan' | 'manual' | 'bluetooth') => {
+  const handleMethodChoice = (method: AddingMethod) => {
     setAddingMethod(method)
     setCurrentStep('processing')
     
@@ -260,6 +321,9 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
     } else if (method === 'bluetooth') {
       // Focus na input po przejściu do ekranu przetwarzania
       setTimeout(() => focusBluetoothInput(), 100)
+    } else if (method === 'manual_barcode') {
+      // Focus na input kodu kreskowego
+      setTimeout(() => manualBarcodeInputRef.current?.focus(), 100)
     }
   }
 
@@ -373,43 +437,56 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
             {/* KROK 2: Wybór metody dodawania */}
             {currentStep === 'method_choice' && (
               <div className="space-y-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm text-blue-900">
-                    📄 Dokument: <span className="font-semibold">{documentNumber}</span>
-                  </p>
-                </div>
+                {documentNumber && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-sm text-blue-900">
+                      📄 Dokument: <span className="font-semibold">{documentNumber}</span>
+                    </p>
+                  </div>
+                )}
 
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <Button
                     onClick={() => handleMethodChoice('scan')}
-                    className="w-full h-auto py-5 bg-green-600 hover:bg-green-700 flex flex-col items-center space-y-2"
+                    className="w-full h-auto py-4 bg-green-600 hover:bg-green-700 flex items-center gap-4"
                   >
-                    <Camera className="w-10 h-10" />
-                    <div className="text-center">
-                      <p className="font-semibold text-lg">Kamera telefonu/tabletu</p>
+                    <Camera className="w-8 h-8 flex-shrink-0" />
+                    <div className="text-left">
+                      <p className="font-semibold">Kamera telefonu/tabletu</p>
                       <p className="text-sm opacity-90">Skanowanie aparatem urządzenia</p>
                     </div>
                   </Button>
 
                   <Button
                     onClick={() => handleMethodChoice('bluetooth')}
-                    className="w-full h-auto py-5 bg-orange-600 hover:bg-orange-700 flex flex-col items-center space-y-2"
+                    className="w-full h-auto py-4 bg-orange-600 hover:bg-orange-700 flex items-center gap-4"
                   >
-                    <Bluetooth className="w-10 h-10" />
-                    <div className="text-center">
-                      <p className="font-semibold text-lg">Skaner Bluetooth</p>
+                    <Bluetooth className="w-8 h-8 flex-shrink-0" />
+                    <div className="text-left">
+                      <p className="font-semibold">Skaner Bluetooth</p>
                       <p className="text-sm opacity-90">Skaner laserowy podłączony przez Bluetooth</p>
                     </div>
                   </Button>
 
                   <Button
-                    onClick={() => handleMethodChoice('manual')}
-                    className="w-full h-auto py-5 bg-blue-600 hover:bg-blue-700 flex flex-col items-center space-y-2"
+                    onClick={() => handleMethodChoice('manual_barcode')}
+                    className="w-full h-auto py-4 bg-purple-600 hover:bg-purple-700 flex items-center gap-4"
                   >
-                    <Edit3 className="w-10 h-10" />
-                    <div className="text-center">
-                      <p className="font-semibold text-lg">Dodawanie ręczne</p>
-                      <p className="text-sm opacity-90">Dla produktów bez kodu (warzywa, owoce itp.)</p>
+                    <Keyboard className="w-8 h-8 flex-shrink-0" />
+                    <div className="text-left">
+                      <p className="font-semibold">Wpisz kod ręcznie</p>
+                      <p className="text-sm opacity-90">Wpisz numer kodu kreskowego z klawiatury</p>
+                    </div>
+                  </Button>
+
+                  <Button
+                    onClick={() => handleMethodChoice('manual')}
+                    className="w-full h-auto py-4 bg-blue-600 hover:bg-blue-700 flex items-center gap-4"
+                  >
+                    <Edit3 className="w-8 h-8 flex-shrink-0" />
+                    <div className="text-left">
+                      <p className="font-semibold">Wyszukaj po nazwie</p>
+                      <p className="text-sm opacity-90">Produkty bez kodu (warzywa, owoce itp.)</p>
                     </div>
                   </Button>
                 </div>
@@ -525,6 +602,48 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
                   </div>
                 )}
 
+                {/* Interfejs dla ręcznego wpisywania kodu */}
+                {addingMethod === 'manual_barcode' && (
+                  <div className="space-y-4">
+                    <div className="flex gap-2 items-center p-4 bg-purple-50 rounded-lg border border-purple-200">
+                      <Keyboard className="w-6 h-6 text-purple-600 flex-shrink-0" />
+                      <div className="flex-1">
+                        <Input
+                          ref={manualBarcodeInputRef}
+                          value={manualBarcodeInput}
+                          onChange={(e) => setManualBarcodeInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              handleManualBarcodeSearch()
+                            }
+                          }}
+                          placeholder="Wpisz kod kreskowy..."
+                          className="font-mono text-lg"
+                          disabled={isSearchingManualBarcode}
+                          autoFocus
+                        />
+                      </div>
+                      <Button
+                        onClick={handleManualBarcodeSearch}
+                        disabled={!manualBarcodeInput.trim() || isSearchingManualBarcode}
+                        size="sm"
+                        className="bg-purple-600 hover:bg-purple-700"
+                      >
+                        {isSearchingManualBarcode ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          'Szukaj'
+                        )}
+                      </Button>
+                    </div>
+                    <div className="text-center text-sm text-gray-500">
+                      <p>Wpisz numer kodu kreskowego z opakowania produktu.</p>
+                      <p>Naciśnij Enter lub kliknij &quot;Szukaj&quot;.</p>
+                    </div>
+                  </div>
+                )}
+
                 {scannedProducts.length > 0 && (
                   <div className="bg-orange-50 border border-orange-200 rounded-md p-3">
                     <p className="text-sm text-orange-900">
@@ -588,13 +707,29 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
           onClose={() => {
             setShowQuantityModal(false)
             setCurrentProduct(null)
-            setShowScanner(true)
+            // Wróć do właściwej metody skanowania
+            if (addingMethod === 'scan') {
+              setShowScanner(true)
+            } else if (addingMethod === 'bluetooth') {
+              focusBluetoothInput()
+            } else if (addingMethod === 'manual_barcode') {
+              setTimeout(() => manualBarcodeInputRef.current?.focus(), 100)
+            }
+            // Dla 'manual' - pozostań w głównym oknie
           }}
           product={currentProduct}
           onSubmit={handleQuantitySubmit}
           isProcessing={isProcessing}
         />
       )}
+
+      {/* Add Product from Barcode Modal */}
+      <AddProductFromBarcodeModal
+        isOpen={showAddProductModal}
+        onClose={handleAddProductModalClose}
+        barcode={pendingBarcode}
+        onProductAdded={handleProductAddedFromBarcode}
+      />
     </>
   )
 }
