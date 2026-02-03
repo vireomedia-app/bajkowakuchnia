@@ -38,149 +38,101 @@ export function AlphanumericKeyboardModal({
     setValue(prev => prev.slice(0, -1))
   }
 
-  const handleClear = () => {
-    setValue('')
-  }
-
   const handleConfirm = () => {
     onConfirm(value)
     onClose()
   }
 
-  const handleCancel = () => {
-    onClose()
-  }
-
-  // Układ klawiatury QWERTY
+  // Układ klawiatury QWERTY - kompaktowy
   const row1 = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']
   const row2 = ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P']
   const row3 = ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L']
-  const row4 = ['Z', 'X', 'C', 'V', 'B', 'N', 'M']
-  const specialChars = ['-', '/', '.', ',']
+  const row4 = ['Z', 'X', 'C', 'V', 'B', 'N', 'M', '-', '/']
 
-  const keyClass = "h-10 min-w-[32px] flex-1 text-base font-medium bg-gray-100 hover:bg-gray-200 active:bg-gray-300 border border-gray-300 rounded"
-  const actionKeyClass = "h-10 px-3 text-base font-medium border rounded"
+  const keyClass = "h-8 min-w-0 flex-1 text-sm font-medium bg-gray-100 hover:bg-gray-200 active:bg-gray-300 border border-gray-300 rounded px-0"
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[95vw] w-full sm:max-w-md p-3">
-        <DialogHeader className="pb-2">
-          <DialogTitle className="text-base">{title}</DialogTitle>
+      <DialogContent className="max-w-[98vw] w-full sm:max-w-sm p-2 gap-1">
+        <DialogHeader className="pb-1">
+          <DialogTitle className="text-sm">{title}</DialogTitle>
         </DialogHeader>
 
-        {/* Pole tekstowe */}
-        <div className="bg-gray-50 border-2 border-gray-300 rounded-lg p-3 min-h-[48px] font-mono text-lg break-all">
-          {value || <span className="text-gray-400">{placeholder}</span>}
+        {/* Pole tekstowe - kompaktowe */}
+        <div className="bg-gray-50 border-2 border-gray-300 rounded p-2 min-h-[36px] font-mono text-base break-all">
+          {value || <span className="text-gray-400 text-sm">{placeholder}</span>}
         </div>
 
-        {/* Klawiatura */}
-        <div className="space-y-1.5 mt-2">
+        {/* Klawiatura - kompaktowa */}
+        <div className="space-y-1">
           {/* Rząd 1: Cyfry */}
-          <div className="flex gap-1">
+          <div className="flex gap-0.5">
             {row1.map(key => (
-              <Button
-                key={key}
-                variant="outline"
-                className={keyClass}
-                onClick={() => handleKey(key)}
-              >
+              <Button key={key} variant="outline" className={keyClass} onClick={() => handleKey(key)}>
                 {key}
               </Button>
             ))}
           </div>
 
           {/* Rząd 2: QWERTYUIOP */}
-          <div className="flex gap-1">
+          <div className="flex gap-0.5">
             {row2.map(key => (
-              <Button
-                key={key}
-                variant="outline"
-                className={keyClass}
-                onClick={() => handleKey(key)}
-              >
+              <Button key={key} variant="outline" className={keyClass} onClick={() => handleKey(key)}>
                 {key}
               </Button>
             ))}
           </div>
 
-          {/* Rząd 3: ASDFGHJKL */}
-          <div className="flex gap-1 px-3">
+          {/* Rząd 3: ASDFGHJKL + Backspace */}
+          <div className="flex gap-0.5">
+            <div className="w-2" />
             {row3.map(key => (
-              <Button
-                key={key}
-                variant="outline"
-                className={keyClass}
-                onClick={() => handleKey(key)}
-              >
-                {key}
-              </Button>
-            ))}
-          </div>
-
-          {/* Rząd 4: ZXCVBNM + specjalne */}
-          <div className="flex gap-1 px-6">
-            {row4.map(key => (
-              <Button
-                key={key}
-                variant="outline"
-                className={keyClass}
-                onClick={() => handleKey(key)}
-              >
-                {key}
-              </Button>
-            ))}
-          </div>
-
-          {/* Rząd 5: Znaki specjalne + Backspace */}
-          <div className="flex gap-1">
-            {specialChars.map(key => (
-              <Button
-                key={key}
-                variant="outline"
-                className={keyClass}
-                onClick={() => handleKey(key)}
-              >
+              <Button key={key} variant="outline" className={keyClass} onClick={() => handleKey(key)}>
                 {key}
               </Button>
             ))}
             <Button
               variant="outline"
-              className={`${actionKeyClass} flex-[2] bg-yellow-100 hover:bg-yellow-200 border-yellow-400`}
+              className="h-8 flex-[1.5] text-sm bg-yellow-100 hover:bg-yellow-200 border-yellow-400 px-1"
               onClick={handleBackspace}
             >
-              <Delete className="w-5 h-5" />
-            </Button>
-            <Button
-              variant="outline"
-              className={`${actionKeyClass} flex-[2] bg-red-100 hover:bg-red-200 border-red-400 text-red-700`}
-              onClick={handleClear}
-            >
-              Wyczyść
+              <Delete className="w-4 h-4" />
             </Button>
           </div>
 
-          {/* Rząd 6: Spacja + Akcje */}
-          <div className="flex gap-1 mt-2">
+          {/* Rząd 4: ZXCVBNM + znaki */}
+          <div className="flex gap-0.5">
+            <div className="w-4" />
+            {row4.map(key => (
+              <Button key={key} variant="outline" className={keyClass} onClick={() => handleKey(key)}>
+                {key}
+              </Button>
+            ))}
+            <div className="w-4" />
+          </div>
+
+          {/* Rząd 5: Spacja + Akcje */}
+          <div className="flex gap-1 pt-1">
             <Button
               variant="outline"
-              className={`${actionKeyClass} flex-[4] bg-gray-100 hover:bg-gray-200 border-gray-300`}
+              className="h-9 flex-[3] text-xs bg-gray-100 hover:bg-gray-200 border-gray-300"
               onClick={() => handleKey(' ')}
             >
               SPACJA
             </Button>
             <Button
               variant="outline"
-              className={`${actionKeyClass} flex-[2] bg-gray-200 hover:bg-gray-300 border-gray-400`}
-              onClick={handleCancel}
+              className="h-9 flex-[2] text-xs bg-gray-200 hover:bg-gray-300 border-gray-400"
+              onClick={onClose}
             >
-              <X className="w-4 h-4 mr-1" />
+              <X className="w-3 h-3 mr-0.5" />
               Anuluj
             </Button>
             <Button
-              className={`${actionKeyClass} flex-[2] bg-green-600 hover:bg-green-700 text-white border-green-700`}
+              className="h-9 flex-[2] text-xs bg-green-600 hover:bg-green-700 text-white"
               onClick={handleConfirm}
             >
-              <Check className="w-4 h-4 mr-1" />
+              <Check className="w-3 h-3 mr-0.5" />
               OK
             </Button>
           </div>
