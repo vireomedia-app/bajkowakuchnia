@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { PackagePlus, X, CheckCircle, Barcode, Package, Edit3, ArrowRight, Bluetooth, Camera, Loader2, Keyboard } from 'lucide-react'
+import { PackagePlus, X, CheckCircle, Barcode, Package, Edit3, ArrowRight, Bluetooth, Camera, Loader2 } from 'lucide-react'
 import { BarcodeScanner } from './barcode-scanner'
 import { OrderQuantityModal } from './order-quantity-modal'
 import { SearchProductForManualAdd } from './search-product-for-manual-add'
@@ -44,23 +44,8 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
   const [showNotFoundFlash, setShowNotFoundFlash] = useState(false)
   const [lastNotFoundBarcode, setLastNotFoundBarcode] = useState('')
   const bluetoothInputRef = useRef<HTMLInputElement>(null)
-  const documentInputRef = useRef<HTMLInputElement>(null)
   const barcodeBuffer = useRef('')
   const lastKeyTime = useRef(0)
-
-  // Funkcja wymuszająca pokazanie klawiatury na urządzeniach mobilnych
-  // (problem gdy skaner Bluetooth jest podłączony jako zewnętrzna klawiatura)
-  const forceShowKeyboard = (inputRef: React.RefObject<HTMLInputElement | null>) => {
-    if (inputRef.current) {
-      inputRef.current.blur()
-      setTimeout(() => {
-        if (inputRef.current) {
-          inputRef.current.focus()
-          inputRef.current.click()
-        }
-      }, 100)
-    }
-  }
 
   // Focus na input Bluetooth
   const focusBluetoothInput = useCallback(() => {
@@ -330,45 +315,31 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
                   <Label htmlFor="documentNumber" className="text-base">
                     Numer dokumentu (WZ / Faktura VAT)
                   </Label>
-                  <div className="flex gap-2">
-                    <Input
-                      ref={documentInputRef}
-                      id="documentNumber"
-                      type="text"
-                      inputMode="text"
-                      placeholder="np. WZ/2025/01/001 lub FV 123/2025"
-                      value={documentNumber}
-                      onChange={(e) => {
-                        setDocumentNumber(e.target.value)
-                        setDocumentNumberError('') // Wyczyść błąd podczas wpisywania
-                      }}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault()
-                          handleDocumentNumberSubmit()
-                        }
-                      }}
-                      autoFocus
-                      className={`text-lg flex-1 ${documentNumberError ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => forceShowKeyboard(documentInputRef)}
-                      className="px-3 bg-blue-50 border-blue-200 hover:bg-blue-100"
-                      title="Pokaż klawiaturę"
-                    >
-                      <Keyboard className="w-5 h-5 text-blue-600" />
-                    </Button>
-                  </div>
+                  <Input
+                    id="documentNumber"
+                    type="text"
+                    placeholder="np. WZ/2025/01/001 lub FV 123/2025"
+                    value={documentNumber}
+                    onChange={(e) => {
+                      setDocumentNumber(e.target.value)
+                      setDocumentNumberError('')
+                    }}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        handleDocumentNumberSubmit()
+                      }
+                    }}
+                    autoFocus
+                    className={`text-lg ${documentNumberError ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  />
                   {documentNumberError && (
                     <p className="text-sm text-red-600 flex items-center space-x-1">
                       <span>⚠️ {documentNumberError}</span>
                     </p>
                   )}
                   <p className="text-xs text-gray-500">
-                    Ten numer będzie przypisany do wszystkich produktów w tej dostawie.
-                    💡 Jeśli klawiatura się nie pojawia, kliknij ikonę klawiatury.
+                    Ten numer będzie przypisany do wszystkich produktów w tej dostawie
                   </p>
                 </div>
 
