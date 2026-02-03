@@ -255,20 +255,20 @@ export function BulkProductScanner({ isOpen, onClose, onProductsAdded }: BulkPro
       )}
 
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+        <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-3 sm:p-6">
+          <DialogHeader className="flex-shrink-0 pb-2">
+            <DialogTitle className="flex items-center gap-2 text-base">
               <Barcode className="w-5 h-5" />
               Masowe dodawanie produktów
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs">
               Skanuj produkty czytnikiem kodów kreskowych. Po zeskanowaniu naciśnij Enter.
             </DialogDescription>
           </DialogHeader>
 
-          {/* Barcode input */}
-          <div className="flex gap-2 items-center p-4 bg-gray-50 rounded-lg">
-            <Label htmlFor="barcode-input" className="whitespace-nowrap">Kod kreskowy:</Label>
+          {/* Barcode input - fixed at top */}
+          <div className="flex-shrink-0 flex gap-2 items-center p-2 sm:p-4 bg-gray-50 rounded-lg">
+            <Label htmlFor="barcode-input" className="whitespace-nowrap text-sm">Kod kreskowy:</Label>
             <Input
               ref={inputRef}
               id="barcode-input"
@@ -284,135 +284,136 @@ export function BulkProductScanner({ isOpen, onClose, onProductsAdded }: BulkPro
                   }
                 }
               }}
-              placeholder="Zeskanuj lub wpisz kod..."
-              className="font-mono text-lg"
+              placeholder="Zeskanuj lub wpisz..."
+              className="font-mono text-base"
               disabled={isSearching}
               autoFocus
             />
             {isSearching && <Loader2 className="w-5 h-5 animate-spin text-orange-500" />}
           </div>
 
-          {/* Stats */}
-          <div className="flex gap-4 text-sm">
-            <div className="flex items-center gap-2 text-green-600">
-              <Check className="w-4 h-4" />
+          {/* Stats - compact */}
+          <div className="flex-shrink-0 flex gap-3 text-xs py-1">
+            <div className="flex items-center gap-1 text-green-600">
+              <Check className="w-3 h-3" />
               <span>Znalezione: {foundProducts.length}</span>
             </div>
-            <div className="flex items-center gap-2 text-red-600">
-              <X className="w-4 h-4" />
+            <div className="flex items-center gap-1 text-red-600">
+              <X className="w-3 h-3" />
               <span>Nieznalezione: {notFoundProducts.length}</span>
             </div>
-            <div className="flex items-center gap-2 text-gray-600">
-              <Package className="w-4 h-4" />
+            <div className="flex items-center gap-1 text-gray-600">
+              <Package className="w-3 h-3" />
               <span>Razem: {scannedProducts.length}</span>
             </div>
           </div>
 
-          {/* Product lists */}
-          <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Found products */}
-            <div className="flex flex-col">
-              <h3 className="font-medium text-green-700 mb-2 flex items-center gap-2">
-                <Check className="w-4 h-4" />
-                Znalezione w Open Food Facts
-              </h3>
-              <ScrollArea className="flex-1 border rounded-lg p-2 bg-green-50">
-                {foundProducts.length === 0 ? (
-                  <p className="text-sm text-gray-500 p-4 text-center">Brak zeskanowanych produktów</p>
-                ) : (
-                  <div className="space-y-2">
-                    {foundProducts.map(product => (
-                      <div key={product.id} className="flex items-center gap-2 p-2 bg-white rounded border border-green-200">
-                        <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <Input
-                            value={product.name}
-                            onChange={(e) => handleUpdateProductName(product.id, e.target.value)}
-                            className="h-8 text-sm"
-                          />
-                          <p className="text-xs text-gray-500 font-mono mt-1">{product.barcode}</p>
-                          {product.existingProductId && (
-                            <p className="text-xs text-blue-600">Już w bazie</p>
-                          )}
+          {/* Product lists - scrollable area */}
+          <div className="flex-1 min-h-0 overflow-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 h-full">
+              {/* Found products */}
+              <div className="flex flex-col min-h-[120px] max-h-[35vh] md:max-h-none">
+                <h3 className="font-medium text-green-700 mb-1 flex items-center gap-1 text-sm flex-shrink-0">
+                  <Check className="w-3 h-3" />
+                  Znalezione w Open Food Facts
+                </h3>
+                <div className="flex-1 border rounded-lg p-2 bg-green-50 overflow-auto">
+                  {foundProducts.length === 0 ? (
+                    <p className="text-xs text-gray-500 p-2 text-center">Brak zeskanowanych produktów</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {foundProducts.map(product => (
+                        <div key={product.id} className="flex items-center gap-2 p-2 bg-white rounded border border-green-200">
+                          <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <Input
+                              value={product.name}
+                              onChange={(e) => handleUpdateProductName(product.id, e.target.value)}
+                              className="h-7 text-sm"
+                            />
+                            <p className="text-xs text-gray-500 font-mono mt-0.5">{product.barcode}</p>
+                            {product.existingProductId && (
+                              <p className="text-xs text-blue-600">Już w bazie</p>
+                            )}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveProduct(product.id)}
+                            className="text-red-500 hover:text-red-700 h-7 w-7 p-0"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveProduct(product.id)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </ScrollArea>
-            </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
 
-            {/* Not found products */}
-            <div className="flex flex-col">
-              <h3 className="font-medium text-red-700 mb-2 flex items-center gap-2">
-                <X className="w-4 h-4" />
-                Nieznalezione - do uzupełnienia ręcznie
-              </h3>
-              <ScrollArea className="flex-1 border rounded-lg p-2 bg-red-50">
-                {notFoundProducts.length === 0 ? (
-                  <p className="text-sm text-gray-500 p-4 text-center">Brak nieznalezionych produktów</p>
-                ) : (
-                  <div className="space-y-2">
-                    {notFoundProducts.map(product => (
-                      <div key={product.id} className="flex items-center gap-2 p-2 bg-white rounded border border-red-200">
-                        <X className="w-5 h-5 text-red-600 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <Input
-                            value={product.name}
-                            onChange={(e) => handleUpdateProductName(product.id, e.target.value)}
-                            className="h-8 text-sm"
-                            placeholder="Wpisz nazwę produktu..."
-                          />
-                          <p className="text-xs text-gray-500 font-mono mt-1">{product.barcode}</p>
+              {/* Not found products */}
+              <div className="flex flex-col min-h-[120px] max-h-[35vh] md:max-h-none">
+                <h3 className="font-medium text-red-700 mb-1 flex items-center gap-1 text-sm flex-shrink-0">
+                  <X className="w-3 h-3" />
+                  Nieznalezione - uzupełnij nazwy ręcznie
+                </h3>
+                <div className="flex-1 border rounded-lg p-2 bg-red-50 overflow-auto">
+                  {notFoundProducts.length === 0 ? (
+                    <p className="text-xs text-gray-500 p-2 text-center">Brak nieznalezionych produktów</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {notFoundProducts.map(product => (
+                        <div key={product.id} className="flex items-center gap-2 p-2 bg-white rounded border border-red-200">
+                          <X className="w-4 h-4 text-red-600 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <Input
+                              value={product.name}
+                              onChange={(e) => handleUpdateProductName(product.id, e.target.value)}
+                              className="h-7 text-sm"
+                              placeholder="Wpisz nazwę..."
+                            />
+                            <p className="text-xs text-gray-500 font-mono mt-0.5">{product.barcode}</p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveProduct(product.id)}
+                            className="text-red-500 hover:text-red-700 h-7 w-7 p-0"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveProduct(product.id)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </ScrollArea>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Warning for not found products */}
+          {/* Warning for not found products - compact */}
           {notFoundProducts.length > 0 && (
-            <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
-              <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-medium text-yellow-800">Uwaga: {notFoundProducts.length} produktów nie znaleziono w bazie Open Food Facts</p>
-                <p className="text-yellow-700">Przed zapisaniem uzupełnij ich nazwy ręcznie.</p>
-              </div>
+            <div className="flex-shrink-0 flex items-center gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+              <AlertCircle className="w-4 h-4 text-yellow-600 flex-shrink-0" />
+              <p className="text-yellow-800">Przed zapisaniem uzupełnij ich nazwy ręcznie.</p>
             </div>
           )}
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={onClose}>
+          {/* Footer - always visible */}
+          <DialogFooter className="flex-shrink-0 gap-2 pt-2 border-t">
+            <Button variant="outline" onClick={onClose} size="sm">
               Anuluj
             </Button>
             <Button
               onClick={handleSaveAll}
               disabled={scannedProducts.length === 0 || isSaving}
               className="bg-green-600 hover:bg-green-700"
+              size="sm"
             >
               {isSaving ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Zapisywanie...</>
+                <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Zapisywanie...</>
               ) : (
-                <><Save className="w-4 h-4 mr-2" /> Zapisz wszystkie ({scannedProducts.filter(p => !p.existingProductId).length})</>
+                <><Save className="w-4 h-4 mr-1" /> Zapisz ({scannedProducts.filter(p => !p.existingProductId).length})</>
               )}
             </Button>
           </DialogFooter>
