@@ -11,6 +11,7 @@ import { BarcodeScanner } from '@/components/barcode-scanner'
 import { OrderQuantityModal } from '@/components/order-quantity-modal'
 import { SearchProductForManualAdd } from '@/components/search-product-for-manual-add'
 import { AddProductFromBarcodeModal } from '@/components/add-product-from-barcode-modal'
+import { AlphanumericKeyboardModal } from '@/components/alphanumeric-keyboard-modal'
 import { toast } from 'sonner'
 
 interface ScannedProduct {
@@ -57,6 +58,12 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
   const bluetoothInputRef = useRef<HTMLInputElement>(null)
   const barcodeBuffer = useRef('')
   const lastKeyTime = useRef(0)
+  
+  // Alphanumeric keyboard state
+  const [showKeyboard, setShowKeyboard] = useState(false)
+  const [keyboardTarget, setKeyboardTarget] = useState<'document' | 'bluetooth' | 'manual_barcode'>('document')
+  const [keyboardInitialValue, setKeyboardInitialValue] = useState('')
+  const [keyboardTitle, setKeyboardTitle] = useState('')
 
   // Focus na input Bluetooth
   const focusBluetoothInput = useCallback(() => {
@@ -109,6 +116,52 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [addingMethod, currentStep, showQuantityModal, bluetoothBarcode])
+
+  // Otwórz klawiaturę alfanumeryczną
+  const openKeyboard = (target: 'document' | 'bluetooth' | 'manual_barcode') => {
+    let initialValue = ''
+    let title = ''
+    
+    switch (target) {
+      case 'document':
+        initialValue = documentNumber
+        title = 'Wpisz numer dokumentu'
+        break
+      case 'bluetooth':
+        initialValue = bluetoothBarcode
+        title = 'Wpisz kod kreskowy'
+        break
+      case 'manual_barcode':
+        initialValue = manualBarcodeInput
+        title = 'Wpisz kod kreskowy'
+        break
+    }
+    
+    setKeyboardTarget(target)
+    setKeyboardInitialValue(initialValue)
+    setKeyboardTitle(title)
+    setShowKeyboard(true)
+  }
+
+  // Obsłuż wartość z klawiatury
+  const handleKeyboardConfirm = (value: string) => {
+    switch (keyboardTarget) {
+      case 'document':
+        setDocumentNumber(value)
+        break
+      case 'bluetooth':
+        setBluetoothBarcode(value)
+        // Automatyczne wyszukiwanie po wpisaniu
+        if (value.trim()) {
+          handleBluetoothScan(value.trim())
+        }
+        break
+      case 'manual_barcode':
+        setManualBarcodeInput(value)
+        break
+    }
+    setShowKeyboard(false)
+  }
 
   // Uniwersalna funkcja wyszukiwania produktu po kodzie kreskowym
   // Używana przez: Bluetooth scanner, ręczne wpisywanie kodu, kamerę
@@ -394,8 +447,9 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
                         handleDocumentNumberSubmit()
                       }
                     }}
-                    autoFocus
-                    className={`text-lg ${documentNumberError ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                    onClick={() => openKeyboard('document')}
+                    readOnly
+                    className={`text-lg cursor-pointer ${documentNumberError ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                   />
                   {documentNumberError && (
                     <p className="text-sm text-red-600 flex items-center space-x-1">
@@ -586,8 +640,9 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
                               }
                             }
                           }}
-                          placeholder="Zeskanuj kod skanerem Bluetooth..."
-                          className="font-mono text-lg"
+                          onClick={() => openKeyboard('bluetooth')}
+                          placeholder="Zeskanuj lub kliknij aby wpisać..."
+                          className="font-mono text-lg cursor-pointer"
                           inputMode="none"
                           disabled={isSearchingBluetooth}
                           autoFocus
@@ -618,10 +673,12 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
                               handleManualBarcodeSearch()
                             }
                           }}
-                          placeholder="Wpisz kod kreskowy..."
-                          className="font-mono text-lg"
+                          onClick={() => openKeyboard('manual_barcode')}
+                          placeholder="Kliknij aby wpisać kod..."
+                          className="font-mono text-lg cursor-pointer"
+                          inputMode="none"
+                          readOnly
                           disabled={isSearchingManualBarcode}
-                          autoFocus
                         />
                       </div>
                       <Button
@@ -729,6 +786,16 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
         onClose={handleAddProductModalClose}
         barcode={pendingBarcode}
         onProductAdded={handleProductAddedFromBarcode}
+      />
+
+      {/* Alphanumeric Keyboard Modal */}
+      <AlphanumericKeyboardModal
+        isOpen={showKeyboard}
+        onClose={() => setShowKeyboard(false)}
+        onConfirm={handleKeyboardConfirm}
+        initialValue={keyboardInitialValue}
+        title={keyboardTitle}
+        placeholder={keyboardTarget === 'document' ? 'np. WZ/2025/01/001' : 'np. 5901234567890'}
       />
     </>
   )
