@@ -331,7 +331,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                     id="name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Np. Mąka pszenna"
+                    placeholder=""
                     className={errors.name ? 'border-red-300' : ''}
                     disabled={isLoading}
                     required
@@ -377,7 +377,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                     id="manufacturer"
                     value={formData.manufacturer}
                     onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
-                    placeholder="Np. Młyny Polskie"
+                    placeholder=""
                     disabled={isLoading}
                   />
                 </div>
@@ -388,7 +388,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                     id="barcode"
                     value={formData.barcode}
                     onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                    placeholder="Np. 5901234567890"
+                    placeholder=""
                     disabled={isLoading}
                   />
                   <p className="text-xs text-gray-500">
@@ -403,7 +403,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                     type="number"
                     step="0.00001"
                     min="0"
-                    placeholder="0.00"
+                    placeholder=""
                     value={formData.initialStock}
                     onChange={(e) => setFormData({ ...formData, initialStock: e.target.value })}
                     className={errors.initialStock ? 'border-red-300' : ''}
@@ -434,7 +434,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                       min="0"
                       value={formData.calories}
                       onChange={(e) => setFormData({ ...formData, calories: e.target.value })}
-                      placeholder="0"
+                      placeholder=""
                       disabled={isLoading}
                     />
                   </div>
@@ -448,7 +448,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                       min="0"
                       value={formData.salt}
                       onChange={(e) => setFormData({ ...formData, salt: e.target.value })}
-                      placeholder="0"
+                      placeholder=""
                       disabled={isLoading}
                     />
                   </div>
@@ -462,7 +462,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                       min="0"
                       value={formData.protein}
                       onChange={(e) => setFormData({ ...formData, protein: e.target.value })}
-                      placeholder="0"
+                      placeholder=""
                       disabled={isLoading}
                     />
                   </div>
@@ -476,7 +476,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                       min="0"
                       value={formData.fat}
                       onChange={(e) => setFormData({ ...formData, fat: e.target.value })}
-                      placeholder="0"
+                      placeholder=""
                       disabled={isLoading}
                     />
                   </div>
@@ -492,7 +492,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                       min="0"
                       value={formData.saturatedFat}
                       onChange={(e) => setFormData({ ...formData, saturatedFat: e.target.value })}
-                      placeholder="0"
+                      placeholder=""
                       disabled={isLoading}
                     />
                   </div>
@@ -506,7 +506,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                       min="0"
                       value={formData.carbohydrates}
                       onChange={(e) => setFormData({ ...formData, carbohydrates: e.target.value })}
-                      placeholder="0"
+                      placeholder=""
                       disabled={isLoading}
                     />
                   </div>
@@ -522,7 +522,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                       min="0"
                       value={formData.sugars}
                       onChange={(e) => setFormData({ ...formData, sugars: e.target.value })}
-                      placeholder="0"
+                      placeholder=""
                       disabled={isLoading}
                     />
                   </div>
@@ -536,7 +536,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                       min="0"
                       value={formData.calcium}
                       onChange={(e) => setFormData({ ...formData, calcium: e.target.value })}
-                      placeholder="0"
+                      placeholder=""
                       disabled={isLoading}
                     />
                   </div>
@@ -550,7 +550,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                       min="0"
                       value={formData.iron}
                       onChange={(e) => setFormData({ ...formData, iron: e.target.value })}
-                      placeholder="0"
+                      placeholder=""
                       disabled={isLoading}
                     />
                   </div>
@@ -564,7 +564,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                       min="0"
                       value={formData.vitaminC}
                       onChange={(e) => setFormData({ ...formData, vitaminC: e.target.value })}
-                      placeholder="0"
+                      placeholder=""
                       disabled={isLoading}
                     />
                   </div>

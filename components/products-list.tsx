@@ -6,9 +6,13 @@ import { Package, TrendingUp, TrendingDown, AlertTriangle, ArrowUp, ArrowDown } 
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { formatAllergens } from '@/lib/allergens'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface ProductsListProps {
   products: Product[]
+  isEditMode?: boolean
+  selectedProducts?: Set<string>
+  onToggleSelect?: (productId: string) => void
 }
 
 // Helper function to check if nutritional value exists
@@ -51,7 +55,7 @@ function NutritionalIndicators({ product }: { product: Product }) {
   )
 }
 
-export function ProductsList({ products }: ProductsListProps) {
+export function ProductsList({ products, isEditMode = false, selectedProducts = new Set(), onToggleSelect }: ProductsListProps) {
   if (!products || products.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-md border border-gray-100 p-12 text-center">
@@ -68,6 +72,7 @@ export function ProductsList({ products }: ProductsListProps) {
         <h3 className="text-base sm:text-lg font-medium text-gray-900 flex items-center space-x-2">
           <Package className="w-4 h-4 sm:w-5 sm:h-5" />
           <span>Lista Produktów</span>
+          {isEditMode && <span className="text-sm text-red-600 font-normal">(tryb edycji)</span>}
         </h3>
       </div>
 
@@ -76,6 +81,9 @@ export function ProductsList({ products }: ProductsListProps) {
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
+              {isEditMode && (
+                <th className="px-3 py-3 w-10"></th>
+              )}
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Nazwa Produktu
               </th>
@@ -99,6 +107,7 @@ export function ProductsList({ products }: ProductsListProps) {
           <tbody className="bg-white divide-y divide-gray-200">
             {products.map((product, index) => {
               const hasAllergens = product?.allergens && product.allergens.length > 0
+              const isSelected = selectedProducts.has(product?.id || '')
               
               return (
                 <motion.tr 
@@ -106,9 +115,23 @@ export function ProductsList({ products }: ProductsListProps) {
                   initial={{ opacity: 1, y: 0 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0 }}
-                  className="hover:bg-gray-50 cursor-pointer transition-colors"
-                  onClick={() => window.location.href = `/product/${product?.id || ''}`}
+                  className={`hover:bg-gray-50 cursor-pointer transition-colors ${isSelected ? 'bg-red-50' : ''}`}
+                  onClick={() => {
+                    if (isEditMode && onToggleSelect) {
+                      onToggleSelect(product?.id || '')
+                    } else {
+                      window.location.href = `/product/${product?.id || ''}`
+                    }
+                  }}
                 >
+                  {isEditMode && (
+                    <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox 
+                        checked={isSelected}
+                        onCheckedChange={() => onToggleSelect?.(product?.id || '')}
+                      />
+                    </td>
+                  )}
                   <td className="px-4 py-3">
                     <div className="flex items-center space-x-2">
                       <div className="flex-shrink-0">
@@ -173,6 +196,7 @@ export function ProductsList({ products }: ProductsListProps) {
       <div className="sm:hidden divide-y divide-gray-200">
         {products.map((product, index) => {
           const hasAllergens = product?.allergens && product.allergens.length > 0
+          const isSelected = selectedProducts.has(product?.id || '')
           
           return (
             <motion.div
@@ -180,10 +204,24 @@ export function ProductsList({ products }: ProductsListProps) {
               initial={{ opacity: 1, y: 0 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0 }}
-              className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-              onClick={() => window.location.href = `/product/${product?.id || ''}`}
+              className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${isSelected ? 'bg-red-50' : ''}`}
+              onClick={() => {
+                if (isEditMode && onToggleSelect) {
+                  onToggleSelect(product?.id || '')
+                } else {
+                  window.location.href = `/product/${product?.id || ''}`
+                }
+              }}
             >
               <div className="flex items-center space-x-3 mb-3">
+                {isEditMode && (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <Checkbox 
+                      checked={isSelected}
+                      onCheckedChange={() => onToggleSelect?.(product?.id || '')}
+                    />
+                  </div>
+                )}
                 <div className="flex-shrink-0">
                   <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
                     <Package className="w-6 h-6 text-white" />
