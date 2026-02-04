@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Check, X, Loader2, Package, Barcode, Save, Trash2, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
+import { AlphanumericKeyboardModal } from '@/components/alphanumeric-keyboard-modal'
 
 interface ScannedProduct {
   id: string
@@ -40,6 +41,27 @@ export function BulkProductScanner({ isOpen, onClose, onProductsAdded }: BulkPro
   const inputRef = useRef<HTMLInputElement>(null)
   const barcodeBuffer = useRef('')
   const lastKeyTime = useRef(0)
+
+  // Alphanumeric keyboard state
+  const [showKeyboard, setShowKeyboard] = useState(false)
+  const [keyboardProductId, setKeyboardProductId] = useState<string | null>(null)
+  const [keyboardInitialValue, setKeyboardInitialValue] = useState('')
+
+  // Otwórz klawiaturę dla edycji nazwy produktu
+  const openKeyboardForProduct = (productId: string, currentName: string) => {
+    setKeyboardProductId(productId)
+    setKeyboardInitialValue(currentName)
+    setShowKeyboard(true)
+  }
+
+  // Obsłuż wartość z klawiatury
+  const handleKeyboardConfirm = (value: string) => {
+    if (keyboardProductId) {
+      handleUpdateProductName(keyboardProductId, value)
+    }
+    setShowKeyboard(false)
+    setKeyboardProductId(null)
+  }
 
   // Funkcja do ustawienia focusu na input
   const focusInput = useCallback(() => {
@@ -328,8 +350,9 @@ export function BulkProductScanner({ isOpen, onClose, onProductsAdded }: BulkPro
                           <div className="flex-1 min-w-0">
                             <Input
                               value={product.name}
-                              onChange={(e) => handleUpdateProductName(product.id, e.target.value)}
-                              className="h-7 text-sm"
+                              onClick={() => openKeyboardForProduct(product.id, product.name)}
+                              readOnly
+                              className="h-7 text-sm cursor-pointer"
                             />
                             <p className="text-xs text-gray-500 font-mono mt-0.5">{product.barcode}</p>
                             {product.existingProductId && (
@@ -368,9 +391,10 @@ export function BulkProductScanner({ isOpen, onClose, onProductsAdded }: BulkPro
                           <div className="flex-1 min-w-0">
                             <Input
                               value={product.name}
-                              onChange={(e) => handleUpdateProductName(product.id, e.target.value)}
-                              className="h-7 text-sm"
-                              placeholder="Wpisz nazwę..."
+                              onClick={() => openKeyboardForProduct(product.id, product.name)}
+                              readOnly
+                              className="h-7 text-sm cursor-pointer"
+                              placeholder="Kliknij aby wpisać..."
                             />
                             <p className="text-xs text-gray-500 font-mono mt-0.5">{product.barcode}</p>
                           </div>
@@ -419,6 +443,19 @@ export function BulkProductScanner({ isOpen, onClose, onProductsAdded }: BulkPro
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Alphanumeric Keyboard Modal */}
+      <AlphanumericKeyboardModal
+        isOpen={showKeyboard}
+        onClose={() => {
+          setShowKeyboard(false)
+          setKeyboardProductId(null)
+        }}
+        onConfirm={handleKeyboardConfirm}
+        initialValue={keyboardInitialValue}
+        title="Edytuj nazwę produktu"
+        placeholder="Wpisz nazwę produktu..."
+      />
     </>
   )
 }
