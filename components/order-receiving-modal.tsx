@@ -432,25 +432,35 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
                   <Label htmlFor="documentNumber" className="text-base">
                     Numer dokumentu (WZ / Faktura VAT)
                   </Label>
-                  <Input
-                    id="documentNumber"
-                    type="text"
-                    placeholder="np. WZ/2025/01/001 lub FV 123/2025"
-                    value={documentNumber}
-                    onChange={(e) => {
-                      setDocumentNumber(e.target.value)
-                      setDocumentNumberError('')
-                    }}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        handleDocumentNumberSubmit()
-                      }
-                    }}
-                    onClick={() => openKeyboard('document')}
-                    readOnly
-                    className={`text-lg cursor-pointer ${documentNumberError ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="documentNumber"
+                      type="text"
+                      placeholder="np. WZ/2025/01/001 lub FV 123/2025"
+                      value={documentNumber}
+                      onChange={(e) => {
+                        setDocumentNumber(e.target.value)
+                        setDocumentNumberError('')
+                      }}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          handleDocumentNumberSubmit()
+                        }
+                      }}
+                      className={`text-lg flex-1 ${documentNumberError ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => openKeyboard('document')}
+                      title="Otwórz klawiaturę"
+                      className="h-10 w-10 shrink-0"
+                    >
+                      <Keyboard className="h-5 w-5" />
+                    </Button>
+                  </div>
                   {documentNumberError && (
                     <p className="text-sm text-red-600 flex items-center space-x-1">
                       <span>⚠️ {documentNumberError}</span>
@@ -640,19 +650,26 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
                               }
                             }
                           }}
-                          onClick={() => openKeyboard('bluetooth')}
-                          placeholder="Zeskanuj lub kliknij aby wpisać..."
-                          className="font-mono text-lg cursor-pointer"
-                          inputMode="none"
+                          placeholder="Zeskanuj lub wpisz kod..."
+                          className="font-mono text-lg"
                           disabled={isSearchingBluetooth}
                           autoFocus
                         />
                       </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => openKeyboard('bluetooth')}
+                        title="Otwórz klawiaturę"
+                        className="h-10 w-10 shrink-0"
+                      >
+                        <Keyboard className="h-5 w-5" />
+                      </Button>
                       {isSearchingBluetooth && <Loader2 className="w-5 h-5 animate-spin text-orange-500" />}
                     </div>
                     <div className="text-center text-sm text-gray-500">
-                      <p>Skieruj skaner na kod kreskowy produktu.</p>
-                      <p>Skaner automatycznie wyśle kod i przejdzie do następnego produktu.</p>
+                      <p>Skieruj skaner na kod kreskowy lub użyj klawiatury ekranowej (ikona obok).</p>
                     </div>
                   </div>
                 )}
@@ -661,7 +678,6 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
                 {addingMethod === 'manual_barcode' && (
                   <div className="space-y-4">
                     <div className="flex gap-2 items-center p-4 bg-purple-50 rounded-lg border border-purple-200">
-                      <Keyboard className="w-6 h-6 text-purple-600 flex-shrink-0" />
                       <div className="flex-1">
                         <Input
                           ref={manualBarcodeInputRef}
@@ -673,14 +689,21 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
                               handleManualBarcodeSearch()
                             }
                           }}
-                          onClick={() => openKeyboard('manual_barcode')}
-                          placeholder="Kliknij aby wpisać kod..."
-                          className="font-mono text-lg cursor-pointer"
-                          inputMode="none"
-                          readOnly
+                          placeholder="Wpisz kod kreskowy..."
+                          className="font-mono text-lg"
                           disabled={isSearchingManualBarcode}
                         />
                       </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => openKeyboard('manual_barcode')}
+                        title="Otwórz klawiaturę"
+                        className="h-10 w-10 shrink-0"
+                      >
+                        <Keyboard className="h-5 w-5" />
+                      </Button>
                       <Button
                         onClick={handleManualBarcodeSearch}
                         disabled={!manualBarcodeInput.trim() || isSearchingManualBarcode}
@@ -695,7 +718,7 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
                       </Button>
                     </div>
                     <div className="text-center text-sm text-gray-500">
-                      <p>Wpisz numer kodu kreskowego z opakowania produktu.</p>
+                      <p>Wpisz kod kreskowy lub użyj klawiatury ekranowej (ikona obok).</p>
                       <p>Naciśnij Enter lub kliknij &quot;Szukaj&quot;.</p>
                     </div>
                   </div>

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Check, X, Loader2, Package, Barcode, Save, Trash2, AlertCircle } from 'lucide-react'
+import { Check, X, Loader2, Package, Barcode, Save, Trash2, AlertCircle, Keyboard } from 'lucide-react'
 import { toast } from 'sonner'
 import { AlphanumericKeyboardModal } from '@/components/alphanumeric-keyboard-modal'
 
@@ -348,12 +348,23 @@ export function BulkProductScanner({ isOpen, onClose, onProductsAdded }: BulkPro
                         <div key={product.id} className="flex items-center gap-2 p-2 bg-white rounded border border-green-200">
                           <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <Input
-                              value={product.name}
-                              onClick={() => openKeyboardForProduct(product.id, product.name)}
-                              readOnly
-                              className="h-7 text-sm cursor-pointer"
-                            />
+                            <div className="flex gap-1">
+                              <Input
+                                value={product.name}
+                                onChange={(e) => handleUpdateProductName(product.id, e.target.value)}
+                                className="h-7 text-sm flex-1"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                onClick={() => openKeyboardForProduct(product.id, product.name)}
+                                title="Otwórz klawiaturę"
+                                className="h-7 w-7 shrink-0"
+                              >
+                                <Keyboard className="h-3 w-3" />
+                              </Button>
+                            </div>
                             <p className="text-xs text-gray-500 font-mono mt-0.5">{product.barcode}</p>
                             {product.existingProductId && (
                               <p className="text-xs text-blue-600">Już w bazie</p>
@@ -389,13 +400,24 @@ export function BulkProductScanner({ isOpen, onClose, onProductsAdded }: BulkPro
                         <div key={product.id} className="flex items-center gap-2 p-2 bg-white rounded border border-red-200">
                           <X className="w-4 h-4 text-red-600 flex-shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <Input
-                              value={product.name}
-                              onClick={() => openKeyboardForProduct(product.id, product.name)}
-                              readOnly
-                              className="h-7 text-sm cursor-pointer"
-                              placeholder="Kliknij aby wpisać..."
-                            />
+                            <div className="flex gap-1">
+                              <Input
+                                value={product.name}
+                                onChange={(e) => handleUpdateProductName(product.id, e.target.value)}
+                                className="h-7 text-sm flex-1"
+                                placeholder="Wpisz nazwę..."
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                onClick={() => openKeyboardForProduct(product.id, product.name)}
+                                title="Otwórz klawiaturę"
+                                className="h-7 w-7 shrink-0"
+                              >
+                                <Keyboard className="h-3 w-3" />
+                              </Button>
+                            </div>
                             <p className="text-xs text-gray-500 font-mono mt-0.5">{product.barcode}</p>
                           </div>
                           <Button
