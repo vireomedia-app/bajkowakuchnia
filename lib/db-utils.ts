@@ -39,7 +39,7 @@ export async function getProductById(id: string) {
 export async function createProduct(data: {
   name: string
   unit: string
-  packagingType?: 'bulk' | 'packaged'
+  packagingType?: string
   initialStock: number
   barcode?: string | null
   packageWeight?: number | null

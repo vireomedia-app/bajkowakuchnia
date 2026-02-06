@@ -3,7 +3,7 @@ export interface Product {
   id: string
   name: string
   unit: string // g, kg, ml, l, szt
-  packagingType?: 'bulk' | 'packaged' | null // bulk = luzem/na wagę, packaged = w opakowaniach
+  packagingType?: string | null // "bulk" (luzem/na wagę) lub "packaged" (w opakowaniach)
   currentStock: number
   barcode?: string | null
   packageWeight?: number | null // tylko dla packagingType === 'packaged'

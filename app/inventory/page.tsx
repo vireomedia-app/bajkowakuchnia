@@ -24,7 +24,7 @@ export default async function InventoryPage({ searchParams }: InventoryPageProps
 
    return (
      <InventoryPageClient 
-       products={(products || []) as any} // <--- tutaj dodajemy ( ) as any
+       products={products || []}
        searchQuery={searchQuery}
        addProductName={searchParams.add_product}
      />
