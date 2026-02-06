@@ -74,7 +74,7 @@ export default async function EditRecipePage({ params }: { params: Promise<{ id:
 
       {/* Form */}
       <RecipeForm 
-        initialProducts={products}
+        initialProducts={products as any}
         initialRecipe={{
           id: recipe.id,
           name: recipe.name,
