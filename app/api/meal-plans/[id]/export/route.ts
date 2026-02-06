@@ -216,7 +216,7 @@ export async function GET(
     for (const day of mealPlan.days) {
       try {
         // Oblicz wartości odżywcze TYLKO dla posiłków zaznaczonych w includeInCalories
-        const nutrition = calculateDailyNutrition(day, includeInCalories as any[]);
+        const nutrition = calculateDailyNutrition(day as any, includeInCalories as any[]);
         const row = nutritionSheet.getRow(nutritionRow);
         
         row.getCell(1).value = DAY_OF_WEEK_LABELS[day.dayOfWeek] || `Dzień ${day.dayOfWeek}`;
