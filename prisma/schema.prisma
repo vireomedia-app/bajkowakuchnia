@@ -1,0 +1,285 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model Product {
+  id            String        @id @default(cuid())
+  name          String        @unique
+  unit          String        // g, kg, ml, l, szt (jednostka bazowa - waga, objętość lub sztuki)
+  packagingType String        @default("bulk") // "bulk" (luzem/na wagę) lub "packaged" (w opakowaniach)
+  currentStock  Float         @default(0)
+  barcode       String?       @unique // Kod kreskowy produktu
+  packageWeight Float?        // Waga/objętość jednego opakowania (tylko dla packagingType="packaged")
+  packageUnit   String?       @default("kg") // Jednostka wagi/objętości opakowania: g, kg, ml, l
+  
+  // Wartości odżywcze (na 100g)
+  manufacturer  String?       // Nazwa producenta
+  calories      Float?        // Kalorie w 100g
+  salt          Float?        // Sól w 100g (g)
+  protein       Float?        // Białko w 100g (g)
+  fat           Float?        // Tłuszcz w 100g (g)
+  saturatedFat  Float?        // Kwasy tłuszczowe nasycone w 100g (g)
+  carbohydrates Float?        // Węglowodany w 100g (g)
+  sugars        Float?        // Cukry w 100g (g)
+  calcium       Float?        // Wapń w 100g (mg)
+  iron          Float?        // Żelazo w 100g (mg)
+  vitaminC      Float?        // Witamina C w 100g (mg)
+  
+  // Alergeny (numery od 1 do 14)
+  allergens     Int[]         @default([])
+  
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  transactions  Transaction[]
+  recipeIngredients RecipeIngredient[]
+
+  @@map("products")
+}
+
+model Transaction {
+  id             String      @id @default(cuid())
+  productId      String
+  date           DateTime
+  document       String
+  type           TransactionType
+  quantity       Float
+  loss           Float?      // Zakładana strata (np. obierki)
+  balance        Float
+  createdAt      DateTime    @default(now())
+  
+  product        Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("transactions")
+}
+
+enum TransactionType {
+  INCOME   // Przychód
+  OUTCOME  // Rozchód
+}
+
+model Backup {
+  id          String   @id @default(cuid())
+  data        String   // JSON snapshot of entire database
+  description String?  // Optional description
+  createdAt   DateTime @default(now())
+
+  @@map("backups")
+  @@index([createdAt])
+}
+
+model Recipe {
+  id          String             @id @default(cuid())
+  name        String             @unique
+  description String?            // Opis przepisu
+  servings    Int                @default(1) // Liczba porcji
+  mealType    MealType?          // Typ posiłku (stare pole, zachowane dla kompatybilności)
+  categories  MealType[]         @default([]) // Kategorie posiłków (nowe pole)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  
+  ingredients RecipeIngredient[]
+  mealPlanRecipes MealPlanRecipe[]
+
+  @@map("recipes")
+}
+
+enum MealType {
+  BREAKFAST          // Śniadanie
+  SECOND_BREAKFAST   // Drugie śniadanie
+  LUNCH              // Obiad
+  FIRST_SNACK        // Podwieczorek I
+  SECOND_SNACK       // Podwieczorek II
+  DINNER             // Kolacja
+  OTHER              // Inne
+}
+
+model RecipeIngredient {
+  id         String   @id @default(cuid())
+  recipeId   String
+  productId  String?  // NULL jeśli produkt nie istnieje w bazie
+  productName String  // Nazwa składnika (może być tymczasowa jeśli produkt nie istnieje)
+  quantity   Float    // Ilość na porcję
+  unit       String   // Jednostka miary (kg, l, szt, g, ml, itd.)
+  
+  recipe     Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  product    Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@map("recipe_ingredients")
+  @@index([recipeId])
+  @@index([productId])
+}
+
+// Normy żywieniowe
+model NutritionalStandards {
+  id                    String   @id @default(cuid())
+  name                  String   // Nazwa zestawu norm (np. "Przedszkole 3-6 lat")
+  
+  // Energia (kalorie)
+  energyMin             Float    @default(870)    // kcal
+  energyMax             Float    @default(1062)   // kcal
+  
+  // Procentowy udział makroskładników w energii
+  proteinPercentMin     Float    @default(10)     // %
+  proteinPercentMax     Float    @default(20)     // %
+  fatPercentMin         Float    @default(30)     // %
+  fatPercentMax         Float    @default(40)     // %
+  carbohydratesPercentMin Float  @default(45)     // %
+  carbohydratesPercentMax Float  @default(65)     // %
+  
+  // Mikroskładniki (wartości docelowe)
+  calcium               Float    @default(750)    // mg
+  iron                  Float    @default(7.5)    // mg
+  vitaminC              Float    @default(37.5)   // mg
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  mealPlans             MealPlan[]
+
+  @@map("nutritional_standards")
+}
+
+// Jadłospis tygodniowy
+model MealPlan {
+  id                    String              @id @default(cuid())
+  name                  String              // Nazwa jadłospisu (np. "Tydzień 4 - Wiosna/Lato")
+  weekNumber            Int?                @map("week_number") // Numer tygodnia (opcjonalny, deprecated)
+  startDate             DateTime?           @map("start_date") // Data rozpoczęcia obowiązywania jadłospisu
+  endDate               DateTime?           @map("end_date") // Data zakończenia obowiązywania jadłospisu
+  season                Season?             // Sezon
+  description           String?             // Dodatkowy opis
+  standardsId           String?             @map("standards_id") // ID norm żywieniowych
+  displayOrder          Int                 @default(0) @map("display_order") // Kolejność wyświetlania
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
+  
+  days                  MealPlanDay[]
+  standards             NutritionalStandards? @relation(fields: [standardsId], references: [id], onDelete: SetNull)
+
+  @@map("meal_plans")
+  @@index([weekNumber])
+  @@index([season])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([displayOrder])
+}
+
+enum Season {
+  SPRING  // Wiosna
+  SUMMER  // Lato
+  AUTUMN  // Jesień
+  WINTER  // Zima
+}
+
+// Dzień w jadłospisie
+model MealPlanDay {
+  id                    String              @id @default(cuid())
+  mealPlanId            String
+  dayOfWeek             Int                 // 1-7 (Poniedziałek-Niedziela)
+  date                  DateTime?           // Opcjonalna konkretna data
+  
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  
+  mealPlan              MealPlan            @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  meals                 MealPlanMeal[]
+
+  @@map("meal_plan_days")
+  @@index([mealPlanId])
+}
+
+// Posiłek w dniu jadłospisu
+model MealPlanMeal {
+  id                    String              @id @default(cuid())
+  mealPlanDayId         String
+  mealType              MealType            // Typ posiłku
+  order                 Int                 @default(0) // Kolejność wyświetlania
+  
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  
+  day                   MealPlanDay         @relation(fields: [mealPlanDayId], references: [id], onDelete: Cascade)
+  recipes               MealPlanRecipe[]
+
+  @@map("meal_plan_meals")
+  @@index([mealPlanDayId])
+}
+
+// Receptura w posiłku (połączenie wiele-do-wielu)
+model MealPlanRecipe {
+  id                    String              @id @default(cuid())
+  mealPlanMealId        String
+  recipeId              String
+  servings              Float               @default(1) // Liczba porcji (może być ułamkowa)
+  order                 Int                 @default(0) // Kolejność wyświetlania
+  
+  createdAt             DateTime            @default(now())
+  
+  meal                  MealPlanMeal        @relation(fields: [mealPlanMealId], references: [id], onDelete: Cascade)
+  recipe                Recipe              @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@map("meal_plan_recipes")
+  @@index([mealPlanMealId])
+  @@index([recipeId])
+}
+
+// Użytkownik (admin)
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // Zahashowane hasło
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  passwordResets PasswordResetToken[]
+
+  @@map("users")
+}
+
+// Ustawienia aplikacji - konfiguracja posiłków
+model AppSettings {
+  id                    String   @id @default(cuid())
+  // Konfiguracja posiłków - które są wliczane do kaloryczności (zachowane dla kompatybilności wstecznej)
+  enabledMeals          MealType[] @default([BREAKFAST, SECOND_BREAKFAST, LUNCH, FIRST_SNACK])
+  
+  // Nowa konfiguracja posiłków
+  includeInCalories     MealType[] @default([BREAKFAST, SECOND_BREAKFAST, LUNCH, FIRST_SNACK])
+  exportForParents      MealType[] @default([BREAKFAST, SECOND_BREAKFAST, LUNCH, FIRST_SNACK])
+  exportForSanepid      MealType[] @default([BREAKFAST, SECOND_BREAKFAST, LUNCH, FIRST_SNACK])
+  
+  // Własne posiłki (JSON z definicjami custom meals)
+  customMeals           Json?      @default("[]")
+  
+  // Wytyczne żywieniowe
+  nutritionalGuidelines String?    @default("Wytyczne żywieniowe dla przedszkoli obejmują 4-5 posiłków dziennie, zgodnie z zasadami prawidłowego żywienia, z uwzględnieniem różnorodnych grup produktów, takich jak: produkty zbożowe, mleko i przetwory, chude mięso, ryby, jaja, rośliny strączkowe, warzywa, owoce i tłuszcze roślinne. Ważne jest ograniczenie cukru, soli, tłuszczów zwierzęcych, żywności przetworzonej i słodyczy, a skupienie się na warzywach i owocach sezonowych oraz produktach pełnoziarnistych.\nKluczowe zasady żywienia w przedszkolu:\nCzęstotliwość posiłków: Zapewnij 4-5 posiłków dziennie, z przerwami nie dłuższymi niż 3-4 godziny.\nRóżnorodność: W każdym posiłku powinny znaleźć się produkty z 5 grup: zbożowe, mleko i przetwory, mięso/ryby/jaja/nasiona roślin strączkowych, warzywa i owoce, tłuszcze.\nProdukty mleczne: W diecie dziecka powinny znaleźć się 2 razy dziennie, w postaci mleka, jogurtu naturalnego, kefiru czy sera białego.\nBiałko: W jadłospisie należy uwzględniać chude mięso, drób, ryby, jaja, nasiona roślin strączkowych i orzechy.\nWarzywa i owoce: Zapewnij różnorodne warzywa i owoce, najlepiej sezonowe, a zimą można wykorzystywać mrożonki.\nTłuszcze: Ogranicz tłuszcze zwierzęce na rzecz roślinnych, np. olej rzepakowy czy oliwa z oliwek.\nOgraniczenia: Unikaj podawania dużej ilości cukru, soli, słodyczy, żywności przetworzonej (z konserwantami, barwnikami) oraz potraw ciężkostrawnych i tłustych.\nWytyczne dotyczące przygotowywania posiłków:\nUnikaj: Podawania potraw przygotowanych w ten sam sposób, np. smażonej ryby i frytek.\nPreferuj: Potrawy lekkostrawne z dodatkiem warzyw gotowanych i surowych.\nUcz żucia: Podawaj pokarmy, które wymagają gryzienia, aby rozwijać prawidłowy zgryz.\nWoda zamiast soków: Do picia podawaj głównie wodę; soki można włączać okazjonalnie w małych ilościach") @db.Text
+  
+  // Adres e-mail do automatycznych backupów
+  backupEmail           String?    @default("zaopatrzenie@bajkowydworek.pl")
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("app_settings")
+}
+
+// Token resetowania hasła
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
+  @@index([token])
+  @@index([userId])
+}

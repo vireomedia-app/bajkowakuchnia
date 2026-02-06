@@ -1,0 +1,4 @@
+{
+  "buildCommand": "prisma generate && yarn build",
+  "installCommand": "yarn install"
+}

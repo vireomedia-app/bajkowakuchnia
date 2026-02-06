@@ -1,0 +1,1 @@
+{"version":1,"functions":{"/api/data/export":{},"/api/data/import":{},"/api/export":{},"/inventory":{},"/api/products":{},"/menu/meal-plans":{},"/menu/meal-plans/[id]":{},"/menu/recipes/new":{},"/menu/recipes/[id]/edit":{},"/api/products/[id]/transactions":{},"/menu/recipes":{},"/api/menu/export":{},"/menu/recipes/[id]":{},"/menu/standards":{},"/product/[id]":{}}}
