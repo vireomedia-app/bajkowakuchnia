@@ -15,13 +15,22 @@ export async function GET(request: NextRequest) {
     let products
     
     if (search) {
-      // Wyszukiwanie produktów po nazwie
+      // Wyszukiwanie produktów po nazwie lub fragmencie kodu kreskowego
       products = await prisma.product.findMany({
         where: {
-          name: {
-            contains: search,
-            mode: 'insensitive'
-          }
+          OR: [
+            {
+              name: {
+                contains: search,
+                mode: 'insensitive'
+              }
+            },
+            {
+              barcode: {
+                contains: search,
+              }
+            }
+          ]
         },
         orderBy: {
           name: 'asc'

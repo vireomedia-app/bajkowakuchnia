@@ -8,6 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from '@/components/ui/button'
 import { Camera, X, AlertCircle, Loader2, Settings, PackagePlus } from 'lucide-react'
 import { toast } from 'sonner'
+import { isValidBarcode, getBarcodeValidationError, generateUnknownProductName } from '@/lib/barcode'
 
 interface BarcodeScannerProps {
   isOpen: boolean
@@ -143,6 +144,12 @@ export function BarcodeScanner({ isOpen, onClose, onScanSuccess, mode = 'add_pro
   }
 
   const handleBarcodeScanned = async (barcode: string) => {
+    // Validate barcode format
+    if (!isValidBarcode(barcode)) {
+      toast.error('Nieprawidłowy kod kreskowy: ' + getBarcodeValidationError(barcode))
+      return
+    }
+
     try {
       setIsLoading(true)
       await stopScanner()
@@ -221,8 +228,8 @@ export function BarcodeScanner({ isOpen, onClose, onScanSuccess, mode = 'add_pro
   
   const handleManualAddYes = () => {
     setShowManualAddDialog(false)
-    // Wywołaj callback z danymi zawierającymi tylko kod kreskowy
-    onScanSuccess({ barcode: scannedBarcode })
+    // Wywołaj callback z danymi zawierającymi kod kreskowy i unikatową nazwę tymczasową
+    onScanSuccess({ barcode: scannedBarcode, name: generateUnknownProductName() })
     onClose()
   }
   

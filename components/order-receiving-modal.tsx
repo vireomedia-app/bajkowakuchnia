@@ -13,6 +13,7 @@ import { SearchProductForManualAdd } from '@/components/search-product-for-manua
 import { AddProductFromBarcodeModal } from '@/components/add-product-from-barcode-modal'
 import { AlphanumericKeyboardModal } from '@/components/alphanumeric-keyboard-modal'
 import { toast } from 'sonner'
+import { isValidBarcode, getBarcodeValidationError } from '@/lib/barcode'
 
 interface ScannedProduct {
   id: string
@@ -167,6 +168,12 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
   // Używana przez: Bluetooth scanner, ręczne wpisywanie kodu, kamerę
   const handleBarcodeSearch = async (barcode: string, method: AddingMethod) => {
     if (!barcode) return
+
+    // Validate barcode format
+    if (!isValidBarcode(barcode)) {
+      toast.error('Nieprawidłowy kod kreskowy: ' + getBarcodeValidationError(barcode))
+      return
+    }
 
     const setLoading = method === 'bluetooth' ? setIsSearchingBluetooth : setIsSearchingManualBarcode
 

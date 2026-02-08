@@ -468,7 +468,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
                         min="0"
                         value={formData.packageWeight}
                         onChange={(e) => setFormData({ ...formData, packageWeight: e.target.value })}
-                        placeholder="np. 500"
+                        placeholder=""
                         disabled={isLoading}
                         className={`flex-1 bg-white ${errors.packageWeight ? 'border-red-300' : ''}`}
                         required

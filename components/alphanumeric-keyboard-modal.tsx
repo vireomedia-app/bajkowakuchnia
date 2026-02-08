@@ -47,7 +47,7 @@ export function AlphanumericKeyboardModal({
   const row1 = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']
   const row2 = ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P']
   const row3 = ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', '←']
-  const row4 = ['Z', 'X', 'C', 'V', 'B', 'N', 'M', '.', '-', '/']
+  const row4 = ['Z', 'X', 'C', 'V', 'B', 'N', 'M', '.', '-', '@']
 
   const keyClass = "h-7 min-w-0 flex-1 text-xs font-medium bg-gray-100 hover:bg-gray-200 active:bg-gray-300 border border-gray-300 rounded-sm px-0"
 

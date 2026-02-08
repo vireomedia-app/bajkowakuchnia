@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { fetchLeclercNutritionByBarcode, fetchLeclerc24NutritionByBarcode } from '@/lib/leclerc'
 import { isNutritionIncomplete, mergeNutritionPreferExisting, NutritionLike } from '@/lib/nutrition'
+import { isValidBarcode, getBarcodeValidationError } from '@/lib/barcode'
 
 // This endpoint requires Node.js runtime (not Edge) for external HTTP requests to Leclerc
 export const runtime = 'nodejs'
@@ -79,6 +80,14 @@ export async function GET(request: NextRequest) {
     if (barcode === '') {
       return NextResponse.json(
         { error: 'Kod kreskowy nie może być pusty' },
+        { status: 400 }
+      )
+    }
+
+    // Validate barcode format
+    if (!isValidBarcode(barcode)) {
+      return NextResponse.json(
+        { error: getBarcodeValidationError(barcode) },
         { status: 400 }
       )
     }
@@ -332,8 +341,48 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // ==========================================================================
+    // FALLBACK 3: Google Search (if no name found from any source)
+    // ==========================================================================
+    if (!productData.name && !offDataFound && !leclercDataFound && !leclerc24DataFound) {
+      console.log('Próbuję wyszukać nazwę produktu w Google...')
+      
+      try {
+        const googleResponse = await fetch(
+          `https://www.google.com/search?q=${encodeURIComponent(barcode + ' product barcode')}`,
+          {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept': 'text/html',
+              'Accept-Language': 'pl-PL,pl;q=0.9,en;q=0.8',
+            },
+          }
+        )
+        
+        if (googleResponse.ok) {
+          const googleHtml = await googleResponse.text()
+          
+          // Extract product name from Google search results title/snippet
+          // Look for pattern in search result titles (between <h3> tags or similar)
+          const titleMatch = googleHtml.match(/<h3[^>]*>(.*?)<\/h3>/i)
+          if (titleMatch) {
+            // Clean HTML tags from the title
+            const rawTitle = titleMatch[1].replace(/<[^>]+>/g, '').trim()
+            // Filter out obviously non-product results
+            if (rawTitle.length > 3 && rawTitle.length < 200 && !rawTitle.toLowerCase().includes('google')) {
+              productData.name = rawTitle
+              sourcesList.push('Google')
+              console.log('Znaleziono nazwę z Google:', rawTitle)
+            }
+          }
+        }
+      } catch (googleError) {
+        console.error('Błąd podczas wyszukiwania w Google:', googleError)
+      }
+    }
+
     // If we still have no data at all, return 404
-    if (!offDataFound && !leclercDataFound && !leclerc24DataFound) {
+    if (!offDataFound && !leclercDataFound && !leclerc24DataFound && !sourcesList.includes('Google')) {
       return NextResponse.json(
         { error: 'Produkt nie został znaleziony w bazie Open Food Facts ani Leclerc' },
         { status: 404 }

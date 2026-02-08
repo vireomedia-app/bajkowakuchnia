@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Check, X, Loader2, Package, Barcode, Save, Trash2, AlertCircle, Keyboard } from 'lucide-react'
 import { toast } from 'sonner'
 import { AlphanumericKeyboardModal } from '@/components/alphanumeric-keyboard-modal'
+import { isValidBarcode, getBarcodeValidationError, generateUnknownProductName } from '@/lib/barcode'
 
 // LocalStorage key for persisting bulk add list
 const BULK_ADD_PRODUCTS_KEY = 'bulkAddProducts'
@@ -98,6 +99,8 @@ export function BulkProductScanner({ isOpen, onClose, onProductsAdded }: BulkPro
     }
     setShowKeyboard(false)
     setKeyboardProductId(null)
+    // Auto-focus barcode input after editing product name
+    focusInput()
   }
 
   // Funkcja do ustawienia focusu na input
@@ -160,9 +163,17 @@ export function BulkProductScanner({ isOpen, onClose, onProductsAdded }: BulkPro
   const handleBarcodeScanned = useCallback(async (barcode: string) => {
     if (!barcode || isSearching) return
 
+    // Validate barcode format
+    if (!isValidBarcode(barcode)) {
+      toast.error('Nieprawidłowy kod kreskowy: ' + getBarcodeValidationError(barcode))
+      focusInput()
+      return
+    }
+
     // Check if already scanned
     if (scannedProducts.some(p => p.barcode === barcode)) {
       toast.info(`Produkt ${barcode} już jest na liście`)
+      focusInput()
       return
     }
 
@@ -173,17 +184,9 @@ export function BulkProductScanner({ isOpen, onClose, onProductsAdded }: BulkPro
       const data = await response.json()
 
       if (response.status === 409) {
-        // Product already exists in database
-        const newProduct: ScannedProduct = {
-          id: `scan-${Date.now()}`,
-          barcode: barcode,
-          name: data.existingProduct?.name || `Istniejący: ${barcode}`,
-          unit: data.existingProduct?.unit || 'g',
-          found: true,
-          existingProductId: data.existingProduct?.id
-        }
-        setScannedProducts(prev => [...prev, newProduct])
-        toast.success(`Produkt "${newProduct.name}" już istnieje w bazie`)
+        // Product already exists in database - don't add to list
+        toast.info(`Produkt już istnieje w bazie: "${data.existingProduct?.name || barcode}"`)
+        focusInput()
       } else if (response.ok) {
         // Found in Open Food Facts and/or Leclerc
         const source = data.source as ScannedProduct['source'] || 'off'
@@ -224,7 +227,7 @@ export function BulkProductScanner({ isOpen, onClose, onProductsAdded }: BulkPro
         const newProduct: ScannedProduct = {
           id: `scan-${Date.now()}`,
           barcode: barcode,
-          name: `Nieznany produkt`,
+          name: generateUnknownProductName(),
           unit: 'g',
           found: false
         }
@@ -303,25 +306,28 @@ export function BulkProductScanner({ isOpen, onClose, onProductsAdded }: BulkPro
 
     setIsSaving(false)
 
+    const skippedCount = scannedProducts.filter(p => p.existingProductId).length
+    const totalProcessed = savedCount + errorCount + skippedCount
+
+    // Show summary toast
+    toast.success(
+      `Przetworzono ${totalProcessed} produktów: ${savedCount} dodano${errorCount > 0 ? `, ${errorCount} błędów` : ''}${skippedCount > 0 ? `, ${skippedCount} pominięto (już w bazie)` : ''}`,
+      { duration: 5000 }
+    )
+
     if (savedCount > 0) {
-      toast.success(`Zapisano ${savedCount} produktów`)
       if (onProductsAdded) {
         onProductsAdded()
       }
-      // Clear the list and localStorage only after successful save
+    }
+    
+    if (errorCount === 0) {
+      // Clear the list and localStorage only after fully successful save
       setScannedProducts([])
       localStorage.removeItem(BULK_ADD_PRODUCTS_KEY)
       onClose()
     }
-    if (errorCount > 0) {
-      toast.error(`Nie udało się zapisać ${errorCount} produktów`)
-      // Don't close modal if there were errors - let user retry
-    }
-    
-    // If all products were already existing (nothing to save), just close
-    if (savedCount === 0 && errorCount === 0) {
-      onClose()
-    }
+    // Don't close modal if there were errors - let user retry
   }
 
   const foundProducts = scannedProducts.filter(p => p.found)

@@ -11,21 +11,11 @@ interface InventoryPageProps {
 
 export default async function InventoryPage({ searchParams }: InventoryPageProps) {
   const allProducts = await getProducts()
-  
-  // Filter products based on search query
-  const searchQuery = searchParams.search?.toLowerCase() || ''
-  const products = searchQuery
-    ? allProducts.filter(product => 
-        product.name.toLowerCase().includes(searchQuery) ||
-        product.unit.toLowerCase().includes(searchQuery)
-      )
-    : allProducts
-  
 
    return (
      <InventoryPageClient 
-       products={products || []}
-       searchQuery={searchQuery}
+       products={allProducts || []}
+       searchQuery=""
        addProductName={searchParams.add_product}
      />
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { ProductsList } from '@/components/products-list'
 import { AddProductModal } from '@/components/add-product-modal'
@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { isValidBarcode, getBarcodeValidationError, generateUnknownProductName } from '@/lib/barcode'
 
 interface InventoryPageClientProps {
   products: Product[]
@@ -24,12 +25,26 @@ interface InventoryPageClientProps {
   addProductName?: string
 }
 
-export function InventoryPageClient({ products, searchQuery, addProductName }: InventoryPageClientProps) {
+export function InventoryPageClient({ products, searchQuery: initialSearchQuery, addProductName }: InventoryPageClientProps) {
   const router = useRouter()
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isScannerOpen, setIsScannerOpen] = useState(false)
   const [initialProductName, setInitialProductName] = useState('')
   const [scannedProductData, setScannedProductData] = useState<any>(null)
+  
+  // Client-side search state
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '')
+  
+  // Filter products client-side (by name, unit, or barcode fragment)
+  const filteredProducts = useMemo(() => {
+    if (!searchQuery.trim()) return products
+    const q = searchQuery.toLowerCase().trim()
+    return products.filter(product => 
+      product.name.toLowerCase().includes(q) ||
+      product.unit.toLowerCase().includes(q) ||
+      (product.barcode && product.barcode.includes(q))
+    )
+  }, [products, searchQuery])
   
   // Scan method selection
   const [showScanMethodDialog, setShowScanMethodDialog] = useState(false)
@@ -154,6 +169,14 @@ export function InventoryPageClient({ products, searchQuery, addProductName }: I
   // Bluetooth scan handler
   const handleBluetoothScan = async (barcode: string) => {
     if (!barcode || isSearchingBluetooth) return
+    
+    // Validate barcode format
+    if (!isValidBarcode(barcode)) {
+      toast.error('Nieprawidłowy kod kreskowy: ' + getBarcodeValidationError(barcode))
+      focusBluetoothInput()
+      return
+    }
+    
     setIsSearchingBluetooth(true)
     
     try {
@@ -161,14 +184,14 @@ export function InventoryPageClient({ products, searchQuery, addProductName }: I
       const data = await response.json()
       
       if (response.status === 409) {
-        toast.info(`Produkt "${data.existingProduct?.name}" już istnieje w bazie`)
+        toast.info(`Produkt już istnieje w bazie: "${data.existingProduct?.name}"`)
       } else if (response.ok) {
         setScannedProductData({ ...data, barcode })
         setShowBluetoothScanner(false)
         setIsAddModalOpen(true)
         toast.success(`Znaleziono: ${data.name}`)
       } else {
-        setScannedProductData({ barcode, _notInDatabase: true })
+        setScannedProductData({ barcode, name: generateUnknownProductName(), _notInDatabase: true })
         setShowBluetoothScanner(false)
         setIsAddModalOpen(true)
         toast.info('Produkt nie znaleziony - wypełnij dane ręcznie')
@@ -219,10 +242,10 @@ export function InventoryPageClient({ products, searchQuery, addProductName }: I
   }
   
   const selectAllProducts = () => {
-    if (selectedProducts.size === products.length) {
+    if (selectedProducts.size === filteredProducts.length) {
       setSelectedProducts(new Set())
     } else {
-      setSelectedProducts(new Set(products.map(p => p.id)))
+      setSelectedProducts(new Set(filteredProducts.map(p => p.id)))
     }
   }
   
@@ -288,7 +311,7 @@ export function InventoryPageClient({ products, searchQuery, addProductName }: I
 
       {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-stretch sm:items-center">
-        <SearchProducts />
+        <SearchProducts value={searchQuery} onChange={setSearchQuery} />
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <Button 
             onClick={() => openScanMethodDialog('scan')} 
@@ -318,7 +341,7 @@ export function InventoryPageClient({ products, searchQuery, addProductName }: I
               <p className="text-sm text-gray-600">
                 {searchQuery ? 'Znaleziono produktów' : 'Łączna liczba produktów'}
               </p>
-              <p className="text-2xl font-bold text-gray-900">{products?.length || 0}</p>
+              <p className="text-2xl font-bold text-gray-900">{filteredProducts?.length || 0}</p>
             </div>
           </div>
         </div>
@@ -331,7 +354,7 @@ export function InventoryPageClient({ products, searchQuery, addProductName }: I
             <div>
               <p className="text-sm text-gray-600">Produkty z dodatnim stanem</p>
               <p className="text-2xl font-bold text-gray-900">
-                {products?.filter(p => (p?.currentStock ?? 0) > 0)?.length || 0}
+                {filteredProducts?.filter(p => (p?.currentStock ?? 0) > 0)?.length || 0}
               </p>
             </div>
           </div>
@@ -345,7 +368,7 @@ export function InventoryPageClient({ products, searchQuery, addProductName }: I
             <div>
               <p className="text-sm text-gray-600">Produkty bez stanu</p>
               <p className="text-2xl font-bold text-gray-900">
-                {products?.filter(p => (p?.currentStock ?? 0) === 0)?.length || 0}
+                {filteredProducts?.filter(p => (p?.currentStock ?? 0) === 0)?.length || 0}
               </p>
             </div>
           </div>
@@ -354,7 +377,7 @@ export function InventoryPageClient({ products, searchQuery, addProductName }: I
 
       {/* Products List */}
       <ProductsList 
-        products={products || []} 
+        products={filteredProducts || []} 
         isEditMode={isEditMode}
         selectedProducts={selectedProducts}
         onToggleSelect={toggleProductSelection}
@@ -370,7 +393,7 @@ export function InventoryPageClient({ products, searchQuery, addProductName }: I
             onClick={selectAllProducts}
             className="text-white hover:bg-red-700"
           >
-            {selectedProducts.size === products.length ? 'Odznacz wszystkie' : 'Zaznacz wszystkie'}
+            {selectedProducts.size === filteredProducts.length ? 'Odznacz wszystkie' : 'Zaznacz wszystkie'}
           </Button>
           <Button 
             variant="ghost" 

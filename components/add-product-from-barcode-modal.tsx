@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Loader2, AlertTriangle, Check, X, Plus, PackageSearch } from 'lucide-react'
 import { toast } from 'sonner'
 import { ALLERGENS } from '@/lib/allergens'
+import { generateUnknownProductName } from '@/lib/barcode'
 
 interface AddProductFromBarcodeModalProps {
   isOpen: boolean
@@ -107,9 +108,9 @@ export function AddProductFromBarcodeModal({
         prefillFromOpenFoodFacts(data)
         setStep('form')
       } else {
-        // Not found in Open Food Facts
+        // Not found in Open Food Facts - set unique temporary name
         setStep('not_found_form')
-        setName('')
+        setName(generateUnknownProductName())
       }
     } catch (error) {
       console.error('Error checking Open Food Facts:', error)
@@ -420,7 +421,7 @@ function ProductForm({
             id="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="np. Mleko 3.2%"
+            placeholder=""
             className="mt-1"
           />
         </div>
@@ -430,7 +431,7 @@ function ProductForm({
             id="manufacturer"
             value={manufacturer}
             onChange={(e) => setManufacturer(e.target.value)}
-            placeholder="np. Mlekovita"
+            placeholder=""
             className="mt-1"
           />
         </div>

@@ -1,27 +1,17 @@
 
 'use client'
 
-import { useState, useTransition } from 'react'
-import { Search } from 'lucide-react'
+import { useRef, useEffect } from 'react'
+import { Search, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { useRouter } from 'next/navigation'
 
-export function SearchProducts() {
-  const [query, setQuery] = useState('')
-  const [isPending, startTransition] = useTransition()
-  const router = useRouter()
+interface SearchProductsProps {
+  value: string
+  onChange: (query: string) => void
+}
 
-  const handleSearch = (searchQuery: string) => {
-    setQuery(searchQuery)
-    
-    startTransition(() => {
-      if (searchQuery) {
-        router.push(`/inventory?search=${encodeURIComponent(searchQuery)}`)
-      } else {
-        router.push('/inventory')
-      }
-    })
-  }
+export function SearchProducts({ value, onChange }: SearchProductsProps) {
+  const inputRef = useRef<HTMLInputElement>(null)
 
   return (
     <div className="relative flex-1 max-w-md">
@@ -29,17 +19,23 @@ export function SearchProducts() {
         <Search className="h-5 w-5 text-gray-400" />
       </div>
       <Input
+        ref={inputRef}
         type="text"
-        placeholder="Szukaj produktów..."
-        value={query}
-        onChange={(e) => handleSearch(e.target.value)}
-        className="pl-10 pr-4 py-2 w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        disabled={isPending}
+        placeholder="Szukaj po nazwie lub kodzie kreskowym..."
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="pl-10 pr-10 py-2 w-full border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
       />
-      {isPending && (
-        <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-        </div>
+      {value && (
+        <button
+          onClick={() => {
+            onChange('')
+            inputRef.current?.focus()
+          }}
+          className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+        >
+          <X className="h-4 w-4" />
+        </button>
       )}
     </div>
   )

@@ -19,7 +19,7 @@ import * as cheerio from 'cheerio'
 
 const LECLERC_BASE_URL = 'https://leclerc.com.pl'
 const LECLERC24_BASE_URL = 'https://leclerc24.net.pl'
-const DEFAULT_TIMEOUT_MS = 10000
+const DEFAULT_TIMEOUT_MS = 15000
 const DELAY_BETWEEN_REQUESTS_MS = 200
 
 // Common headers to mimic a browser request
@@ -328,11 +328,27 @@ function isLikelyProductUrl(href: string): boolean {
  * @returns Array of product page URLs (up to 10)
  */
 export async function searchLeclercProductUrls(barcode: string): Promise<string[]> {
-  // Use the AJAX search URL which returns the full page with product listing
-  const searchUrl = `${LECLERC_BASE_URL}/szukaj/search/1?word=${encodeURIComponent(barcode)}`
+  // Try multiple search URL patterns (AJAX endpoint may change)
+  const searchUrls = [
+    `${LECLERC_BASE_URL}/szukaj?word=${encodeURIComponent(barcode)}`,
+    `${LECLERC_BASE_URL}/szukaj/search/1?word=${encodeURIComponent(barcode)}`,
+  ]
   
-  console.log('[Leclerc] Searching:', searchUrl)
+  for (const searchUrl of searchUrls) {
+    console.log('[Leclerc] Searching:', searchUrl)
+    
+    try {
+      const results = await _searchLeclercWithUrl(searchUrl, barcode)
+      if (results.length > 0) return results
+    } catch (error) {
+      console.error(`[Leclerc] Search failed for URL ${searchUrl}:`, error)
+    }
+  }
   
+  return []
+}
+
+async function _searchLeclercWithUrl(searchUrl: string, barcode: string): Promise<string[]> {
   try {
     const response = await fetchWithTimeout(searchUrl, {
       headers: {
