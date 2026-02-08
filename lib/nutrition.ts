@@ -5,6 +5,8 @@
  * - Checking if product nutrition data is incomplete
  * - Merging nutrition data from multiple sources
  * - Unified fallback resolver for nutrition from multiple sources
+ * 
+ * Fallback order: Open Food Facts → Leclerc.com.pl → Leclerc24.net.pl
  */
 
 import { fetchLeclercNutritionByBarcode, fetchLeclerc24NutritionByBarcode } from './leclerc'
@@ -279,6 +281,8 @@ export const NUTRITION_FIELD_UNITS: Record<keyof NutritionLike, string> = {
  * Result from the unified nutrition resolver.
  */
 export interface NutritionResolveResult {
+  /** Data from Open Food Facts (if found) */
+  fromOpenFoodFacts?: Partial<NutritionLike> | null
   /** Data from Leclerc.com.pl (if found) */
   fromLeclerc?: Partial<NutritionLike> | null
   /** Data from Leclerc24.net.pl (if found) */
@@ -293,12 +297,123 @@ export interface NutritionResolveResult {
   hasData: boolean
 }
 
+// Allergen mapping from Open Food Facts tags to our IDs
+const OFF_ALLERGEN_MAP: { [key: string]: number } = {
+  'en:gluten': 1,
+  'en:crustaceans': 2,
+  'en:eggs': 3,
+  'en:fish': 4,
+  'en:peanuts': 5,
+  'en:soybeans': 6,
+  'en:milk': 7,
+  'en:nuts': 8,
+  'en:celery': 9,
+  'en:mustard': 10,
+  'en:sesame-seeds': 11,
+  'en:sulphur-dioxide-and-sulphites': 12,
+  'en:lupin': 13,
+  'en:molluscs': 14,
+}
+
+/**
+ * Fetch nutrition data from Open Food Facts API.
+ * 
+ * @param barcode - Product barcode
+ * @returns Nutrition data or null if not found
+ */
+async function fetchOpenFoodFactsNutrition(barcode: string): Promise<{
+  data: Partial<NutritionLike>
+  name?: string
+  manufacturer?: string
+  allergens?: number[]
+} | null> {
+  console.log(`[OFF] Fetching nutrition for barcode: ${barcode}`)
+  
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 10000)
+  
+  try {
+    const response = await fetch(
+      `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
+      {
+        headers: { 'User-Agent': 'Kartoteka Magazynowa - Internal Use' },
+        signal: controller.signal,
+      }
+    )
+    
+    if (!response.ok) {
+      console.log(`[OFF] HTTP ${response.status}`)
+      return null
+    }
+    
+    const json = await response.json()
+    
+    if (json.status === 0 || !json.product) {
+      console.log('[OFF] Product not found')
+      return null
+    }
+    
+    const product = json.product
+    const n = product.nutriments || {}
+    
+    const data: Partial<NutritionLike> = {
+      calories: n['energy-kcal_100g'] ?? null,
+      protein: n.proteins_100g ?? null,
+      fat: n.fat_100g ?? null,
+      saturatedFat: n['saturated-fat_100g'] ?? null,
+      carbohydrates: n.carbohydrates_100g ?? null,
+      sugars: n.sugars_100g ?? null,
+      salt: n.salt_100g ?? null,
+      calcium: n.calcium_100g ? n.calcium_100g * 1000 : null,
+      iron: n.iron_100g ? n.iron_100g * 1000 : null,
+      vitaminC: n['vitamin-c_100g'] ? n['vitamin-c_100g'] * 1000 : null,
+    }
+    
+    // Map allergens
+    const allergens: number[] = []
+    if (product.allergens_tags) {
+      for (const tag of product.allergens_tags) {
+        const id = OFF_ALLERGEN_MAP[tag]
+        if (id && !allergens.includes(id)) allergens.push(id)
+      }
+    }
+    
+    // Check if we got any meaningful nutrition data
+    const hasNutrition = data.calories != null || data.protein != null || 
+                         data.fat != null || data.carbohydrates != null
+    
+    if (!hasNutrition) {
+      console.log('[OFF] Product found but no nutrition data')
+      return null
+    }
+    
+    console.log(`[OFF] Found nutrition data for: ${product.product_name_pl || product.product_name || barcode}`)
+    
+    return {
+      data,
+      name: product.product_name_pl || product.product_name,
+      manufacturer: product.brands,
+      allergens: allergens.sort((a, b) => a - b),
+    }
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      console.error('[OFF] Request timed out')
+    } else {
+      console.error('[OFF] Error:', error)
+    }
+    return null
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
 /**
  * Resolve nutrition data using multiple fallback sources.
  * 
  * Order of resolution:
- * 1. Leclerc.com.pl - Primary Leclerc scraper
- * 2. Leclerc24.net.pl - Secondary Leclerc-like scraper
+ * 1. Open Food Facts API (fastest, most reliable)
+ * 2. Leclerc.com.pl scraper
+ * 3. Leclerc24.net.pl scraper
  * 
  * The function uses the existing data and only fills missing fields.
  * Each subsequent source only fills fields that are still missing after the previous source.
@@ -322,6 +437,32 @@ export async function resolveNutritionWithFallbacks(
   
   // Helper to check if we still need more data
   const stillIncomplete = () => isNutritionIncomplete(result.merged)
+  
+  // ==========================================================================
+  // SOURCE 0: Open Food Facts (fastest, most reliable)
+  // ==========================================================================
+  if (stillIncomplete()) {
+    console.log('[NutritionResolver] Trying Open Food Facts...')
+    try {
+      const offResult = await fetchOpenFoodFactsNutrition(barcode)
+      
+      if (offResult && offResult.data) {
+        result.fromOpenFoodFacts = offResult.data
+        result.sourceUrls.push(`https://world.openfoodfacts.org/product/${barcode}`)
+        
+        // Merge with existing (only fill missing)
+        result.merged = mergeNutritionPreferExisting(result.merged, offResult.data)
+        result.sourceInfo.push('Open Food Facts')
+        result.hasData = true
+        
+        console.log('[NutritionResolver] Got data from Open Food Facts')
+      } else {
+        console.log('[NutritionResolver] No data from Open Food Facts')
+      }
+    } catch (error) {
+      console.error('[NutritionResolver] Error from Open Food Facts:', error)
+    }
+  }
   
   // ==========================================================================
   // SOURCE 1: Leclerc.com.pl

@@ -152,6 +152,28 @@ function parsePolishNumber(raw: string | undefined | null): number | null {
 }
 
 /**
+ * Extract kcal value from combined energy strings like "442 kJ / 105 kcal" or "105 kcal".
+ * Falls back to parsePolishNumber if no kcal pattern is found.
+ */
+function parseCalorieValue(raw: string | undefined | null): number | null {
+  if (!raw) return null
+  
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  
+  // Try to extract "NNN kcal" from the string (handles "442 kJ / 105 kcal")
+  const kcalMatch = trimmed.match(/(\d+[,.]?\d*)\s*kcal/i)
+  if (kcalMatch) {
+    const normalized = kcalMatch[1].replace(',', '.')
+    const num = parseFloat(normalized)
+    return isNaN(num) ? null : num
+  }
+  
+  // Fallback: just parse the number
+  return parsePolishNumber(trimmed)
+}
+
+/**
  * Convert a value based on its unit to our standard units.
  * - For minerals/vitamins that might be in µg, convert to mg.
  */
@@ -458,11 +480,12 @@ async function _searchLeclercWithUrl(searchUrl: string, barcode: string): Promis
 function mapLeclercLabelToField(label: string): keyof Omit<LeclercNutritionData, 'sourceUrl'> | null {
   const lower = label.toLowerCase().trim()
   
-  // Calories: "Wartość energetyczna (kcal)" - must have kcal to distinguish from kJ
-  if (lower.includes('wartość energetyczna') && lower.includes('kcal')) {
+  // Calories: "Wartość energetyczna (kcal)" or just "Wartość energetyczna"
+  // (the kcal value may be in the data cell, not the label)
+  if (lower.includes('wartość energetyczna') || lower.includes('wartosc energetyczna')) {
     return 'calories'
   }
-  if (lower.includes('energia') && lower.includes('kcal')) {
+  if (lower.includes('energia')) {
     return 'calories'
   }
   
@@ -548,8 +571,48 @@ export async function scrapeLeclercNutritionFromProductPage(
     }
     
     // ==========================================================================
-    // STRATEGY 1 (Primary): Find "Obliczona wartość odżywcza" heading and table
-    // This table has clean numeric values like "318.00000" in "na 100g" column
+    // STRATEGY 0 (Most reliable): Find .l-table--nutritional-values directly
+    // ==========================================================================
+    const $directLTable = $('.l-table--nutritional-values').first()
+    
+    if ($directLTable.length) {
+      console.log('[Leclerc] Found nutrition table via .l-table--nutritional-values class')
+      
+      $directLTable.find('.l-table__row').each((_, row) => {
+        const $row = $(row)
+        const cells = $row.find('.l-table__cell')
+        
+        if (cells.length < 2) return
+        
+        const $labelSpan = $(cells[0]).find('.l-table__text')
+        const $valueSpan = $(cells[1]).find('.l-table__text')
+        const labelText = ($labelSpan.length ? $labelSpan.text() : $(cells[0]).text()).trim()
+        const valueText = ($valueSpan.length ? $valueSpan.text() : $(cells[1]).text()).trim()
+        
+        const field = mapLeclercLabelToField(labelText)
+        if (field) {
+          const value = field === 'calories' ? parseCalorieValue(valueText) : parsePolishNumber(valueText)
+          if (value !== null) {
+            ;(nutrition as any)[field] = value
+            console.log(`[Leclerc] Parsed ${field}: ${value}`)
+          }
+        }
+      })
+    }
+    
+    const hasDataAfterStrategy0 = nutrition.calories !== undefined ||
+                                   nutrition.protein !== undefined ||
+                                   nutrition.fat !== undefined ||
+                                   nutrition.carbohydrates !== undefined
+    
+    if (hasDataAfterStrategy0) {
+      console.log('[Leclerc] Successfully extracted nutrition via .l-table--nutritional-values')
+      return nutrition
+    }
+    
+    // ==========================================================================
+    // STRATEGY 1: Find nutrition heading and table
+    // Matches "Obliczona wartość odżywcza", "Wartości odżywcze", etc.
     // ==========================================================================
     let foundObliczonaTable = false
     let foundObliczonaHeading = false
@@ -561,11 +624,15 @@ export async function scrapeLeclercNutritionFromProductPage(
       const $el = $(el)
       const text = $el.clone().children().remove().end().text().trim().toLowerCase()
       
-      // Check if this element contains the heading "Obliczona wartość odżywcza"
+      // Check if this element contains a nutrition heading
       if (text.includes('obliczona wartość odżywcza') || 
-          text.includes('obliczona wartosc odzywcza')) {
+          text.includes('obliczona wartosc odzywcza') ||
+          text.includes('wartości odżywcze') ||
+          text.includes('wartosci odzywcze') ||
+          text.includes('wartość odżywcza') ||
+          text.includes('wartosc odzywcza')) {
         foundObliczonaHeading = true
-        console.log('[Leclerc] Found "Obliczona wartość odżywcza" section')
+        console.log(`[Leclerc] Found nutrition section heading: "${text.substring(0, 60)}"`)
         
         // Find the nearest table after this element
         // Strategy: look in siblings, then parent's siblings, then traverse down
@@ -710,7 +777,7 @@ export async function scrapeLeclercNutritionFromProductPage(
             
             const field = mapLeclercLabelToField(labelText)
             if (field) {
-              const value = parsePolishNumber(valueText)
+              const value = field === 'calories' ? parseCalorieValue(valueText) : parsePolishNumber(valueText)
               if (value !== null) {
                 ;(nutrition as any)[field] = value
                 console.log(`[Leclerc] Parsed ${field}: ${value}`)
@@ -754,7 +821,7 @@ export async function scrapeLeclercNutritionFromProductPage(
               
               const field = mapLeclercLabelToField(labelText)
               if (field) {
-                const value = parsePolishNumber(valueText)
+                const value = field === 'calories' ? parseCalorieValue(valueText) : parsePolishNumber(valueText)
                 if (value !== null) {
                   ;(nutrition as any)[field] = value
                   console.log(`[Leclerc] Parsed ${field}: ${value}`)
@@ -1135,7 +1202,7 @@ export async function searchLeclerc24ProductUrls(barcode: string): Promise<strin
       headers: {
         ...DEFAULT_HEADERS,
       },
-    })
+    }, 25000) // Leclerc24 search can be very slow (~8s+)
     
     if (!response.ok) {
       console.error(`[Leclerc24] Search failed with status ${response.status}`)
@@ -1237,7 +1304,7 @@ export async function scrapeLeclerc24NutritionFromProductPage(
   console.log('[Leclerc24] Scraping product page:', productUrl)
   
   try {
-    const response = await fetchWithTimeout(productUrl)
+    const response = await fetchWithTimeout(productUrl, {}, 25000) // Leclerc24 can be slow
     
     if (!response.ok) {
       console.error(`[Leclerc24] Product page fetch failed with status ${response.status}`)
@@ -1258,20 +1325,84 @@ export async function scrapeLeclerc24NutritionFromProductPage(
       sourceUrl: productUrl,
     }
     
+    /**
+     * Helper to parse a row from the l-table structure.
+     * Handles special cases like "442 kJ / 105 kcal" for energy values.
+     */
+    const parseLTableRow = (labelText: string, valueText: string) => {
+      const field = mapLeclercLabelToField(labelText)
+      if (!field) return
+      
+      // For calories, use the specialized parser that extracts kcal from "kJ / kcal" format
+      if (field === 'calories') {
+        const value = parseCalorieValue(valueText)
+        if (value !== null && nutrition.calories === undefined) {
+          nutrition.calories = value
+          console.log(`[Leclerc24] Parsed calories: ${value}`)
+        }
+        return
+      }
+      
+      const value = parsePolishNumber(valueText)
+      if (value !== null && (nutrition as any)[field] === undefined) {
+        ;(nutrition as any)[field] = value
+        console.log(`[Leclerc24] Parsed ${field}: ${value}`)
+      }
+    }
+    
     // ==========================================================================
-    // STRATEGY 1 (Primary): Find "Obliczona wartość odżywcza" heading and table
+    // STRATEGY 0 (Most reliable): Find .l-table--nutritional-values directly
     // ==========================================================================
-    let foundObliczonaTable = false
+    const $directTable = $('.l-table--nutritional-values').first()
+    
+    if ($directTable.length) {
+      console.log('[Leclerc24] Found nutrition table via .l-table--nutritional-values class')
+      
+      $directTable.find('.l-table__row').each((_, row) => {
+        const $row = $(row)
+        const cells = $row.find('.l-table__cell')
+        
+        if (cells.length < 2) return
+        
+        const $labelSpan = $(cells[0]).find('.l-table__text')
+        const $valueSpan = $(cells[1]).find('.l-table__text')
+        const labelText = ($labelSpan.length ? $labelSpan.text() : $(cells[0]).text()).trim()
+        const valueText = ($valueSpan.length ? $valueSpan.text() : $(cells[1]).text()).trim()
+        
+        parseLTableRow(labelText, valueText)
+      })
+    }
+    
+    // Check if Strategy 0 found data
+    const hasDataAfterStrategy0 = nutrition.calories !== undefined ||
+                                   nutrition.protein !== undefined ||
+                                   nutrition.fat !== undefined ||
+                                   nutrition.carbohydrates !== undefined
+    
+    if (hasDataAfterStrategy0) {
+      console.log('[Leclerc24] Successfully extracted nutrition via .l-table--nutritional-values')
+      return nutrition
+    }
+    
+    // ==========================================================================
+    // STRATEGY 1: Find nutrition heading and nearby l-table
+    // Matches "Wartości odżywcze", "Obliczona wartość odżywcza", etc.
+    // ==========================================================================
+    let foundNutritionTable = false
     
     $('*').each((_, el) => {
-      if (foundObliczonaTable) return false
+      if (foundNutritionTable) return false
       
       const $el = $(el)
       const text = $el.clone().children().remove().end().text().trim().toLowerCase()
       
       if (text.includes('obliczona wartość odżywcza') || 
-          text.includes('obliczona wartosc odzywcza')) {
-        console.log('[Leclerc24] Found "Obliczona wartość odżywcza" section')
+          text.includes('obliczona wartosc odzywcza') ||
+          text.includes('wartości odżywcze') ||
+          text.includes('wartosci odzywcze') ||
+          text.includes('wartość odżywcza') ||
+          text.includes('wartosc odzywcza')) {
+        console.log(`[Leclerc24] Found nutrition heading: "${text.substring(0, 60)}"`)
         
         // Look for nutrition table (div-based l-table structure)
         let $nutritionContainer: ReturnType<typeof $> | null = null
@@ -1295,10 +1426,10 @@ export async function scrapeLeclerc24NutritionFromProductPage(
         if ($nutritionContainer === null || ($nutritionContainer as any).length === 0) {
           const $parentNext = $el.parent().next()
           if ($parentNext.length) {
-            if ($parentNext.hasClass('l-table')) {
+            if ($parentNext.hasClass('l-table') || $parentNext.hasClass('l-table--nutritional-values')) {
               $nutritionContainer = $parentNext
             } else {
-              const $found = $parentNext.find('.l-table').first()
+              const $found = $parentNext.find('.l-table, .l-table--nutritional-values').first()
               if ($found.length) {
                 $nutritionContainer = $found
               }
@@ -1311,11 +1442,11 @@ export async function scrapeLeclerc24NutritionFromProductPage(
           $el.parent().nextAll().each((_, sib) => {
             if ($nutritionContainer !== null && ($nutritionContainer as any).length > 0) return false
             const $sib = $(sib)
-            if ($sib.hasClass('l-table')) {
+            if ($sib.hasClass('l-table') || $sib.hasClass('l-table--nutritional-values')) {
               $nutritionContainer = $sib
               return false
             }
-            const $found = $sib.find('.l-table').first()
+            const $found = $sib.find('.l-table, .l-table--nutritional-values').first()
             if ($found.length) {
               $nutritionContainer = $found
               return false
@@ -1325,11 +1456,9 @@ export async function scrapeLeclerc24NutritionFromProductPage(
         
         if ($nutritionContainer && $nutritionContainer.length) {
           console.log('[Leclerc24] Found nutrition table (l-table structure)')
-          foundObliczonaTable = true
+          foundNutritionTable = true
           
-          const rows = $nutritionContainer.find('.l-table__row')
-          
-          rows.each((_, row) => {
+          $nutritionContainer.find('.l-table__row').each((_, row) => {
             const $row = $(row)
             const cells = $row.find('.l-table__cell')
             
@@ -1340,19 +1469,12 @@ export async function scrapeLeclerc24NutritionFromProductPage(
             const labelText = ($labelSpan.length ? $labelSpan.text() : $(cells[0]).text()).trim()
             const valueText = ($valueSpan.length ? $valueSpan.text() : $(cells[1]).text()).trim()
             
-            const field = mapLeclercLabelToField(labelText)
-            if (field) {
-              const value = parsePolishNumber(valueText)
-              if (value !== null) {
-                ;(nutrition as any)[field] = value
-                console.log(`[Leclerc24] Parsed ${field}: ${value}`)
-              }
-            }
+            parseLTableRow(labelText, valueText)
           })
         }
         
         // Also try HTML table structure
-        if (!foundObliczonaTable) {
+        if (!foundNutritionTable) {
           let foundTable: ReturnType<typeof $> | null = null
           
           $el.nextAll().each((_, sib) => {
@@ -1371,7 +1493,7 @@ export async function scrapeLeclerc24NutritionFromProductPage(
           
           if (foundTable !== null && (foundTable as any).length > 0) {
             console.log('[Leclerc24] Found nutrition table (HTML table structure)')
-            foundObliczonaTable = true
+            foundNutritionTable = true
             
             const $tableEl = foundTable as ReturnType<typeof $>
             $tableEl.find('tr').each((_, row) => {
@@ -1383,14 +1505,7 @@ export async function scrapeLeclerc24NutritionFromProductPage(
               const labelText = $(cells[0]).text().trim()
               const valueText = $(cells[1]).text().trim()
               
-              const field = mapLeclercLabelToField(labelText)
-              if (field) {
-                const value = parsePolishNumber(valueText)
-                if (value !== null) {
-                  ;(nutrition as any)[field] = value
-                  console.log(`[Leclerc24] Parsed ${field}: ${value}`)
-                }
-              }
+              parseLTableRow(labelText, valueText)
             })
           }
         }
@@ -1406,37 +1521,43 @@ export async function scrapeLeclerc24NutritionFromProductPage(
                                    nutrition.carbohydrates !== undefined
     
     if (hasDataAfterStrategy1) {
-      console.log('[Leclerc24] Successfully extracted nutrition from "Obliczona wartość odżywcza" table')
+      console.log('[Leclerc24] Successfully extracted nutrition from heading-adjacent table')
       return nutrition
     }
     
     // ==========================================================================
-    // STRATEGY 2 (Fallback): Look for any nutrition table
+    // STRATEGY 2 (Fallback): Look for any div.l-table or <table> with nutrition content
     // ==========================================================================
-    console.log('[Leclerc24] Strategy 1 failed, trying fallback strategies...')
+    console.log('[Leclerc24] Strategies 0-1 failed, trying fallback strategies...')
     
-    const labelMappings: { [key: string]: keyof Omit<LeclercNutritionData, 'sourceUrl'> } = {
-      'wartość energetyczna': 'calories',
-      'energia': 'calories',
-      'kalorie': 'calories',
-      'kcal': 'calories',
-      'białko': 'protein',
-      'białka': 'protein',
-      'tłuszcz': 'fat',
-      'tłuszcze': 'fat',
-      'kwasy tłuszczowe nasycone': 'saturatedFat',
-      'nasycone': 'saturatedFat',
-      'węglowodany': 'carbohydrates',
-      'cukry': 'sugars',
-      'cukier': 'sugars',
-      'sól': 'salt',
-      'błonnik': 'fiber',
-      'wapń': 'calcium',
-      'żelazo': 'iron',
-      'witamina c': 'vitaminC',
-    }
+    // 2a: Check any div.l-table elements
+    $('.l-table').each((_, ltable) => {
+      const $ltable = $(ltable)
+      const ltableText = $ltable.text().toLowerCase()
+      
+      const nutritionKeywords = ['wartość odżywcza', 'wartości odżywcze', 'na 100', 'białko', 'tłuszcz', 'węglowodany', 'kcal']
+      const hasNutritionContent = nutritionKeywords.some(kw => ltableText.includes(kw))
+      
+      if (!hasNutritionContent) return
+      
+      console.log('[Leclerc24] Found potential nutrition l-table (fallback)')
+      
+      $ltable.find('.l-table__row').each((_, row) => {
+        const $row = $(row)
+        const cells = $row.find('.l-table__cell')
+        
+        if (cells.length < 2) return
+        
+        const $labelSpan = $(cells[0]).find('.l-table__text')
+        const $valueSpan = $(cells[1]).find('.l-table__text')
+        const labelText = ($labelSpan.length ? $labelSpan.text() : $(cells[0]).text()).trim()
+        const valueText = ($valueSpan.length ? $valueSpan.text() : $(cells[1]).text()).trim()
+        
+        parseLTableRow(labelText, valueText)
+      })
+    })
     
-    // Look for any table with nutrition keywords
+    // 2b: Look for any HTML <table> with nutrition keywords
     $('table').each((_, table) => {
       const $table = $(table)
       const tableText = $table.text().toLowerCase()
@@ -1446,7 +1567,7 @@ export async function scrapeLeclerc24NutritionFromProductPage(
       
       if (!hasNutritionContent) return
       
-      console.log('[Leclerc24] Found potential nutrition table (fallback)')
+      console.log('[Leclerc24] Found potential nutrition HTML table (fallback)')
       
       $table.find('tr').each((_, row) => {
         const $row = $(row)
@@ -1454,32 +1575,10 @@ export async function scrapeLeclerc24NutritionFromProductPage(
         
         if (cells.length < 2) return
         
-        const labelCell = $(cells[0]).text().toLowerCase().trim()
-        const valueCell = $(cells[1]).text().trim()
+        const labelText = $(cells[0]).text().trim()
+        const valueText = $(cells[1]).text().trim()
         
-        // For "wartość energetyczna" with format "1352 kJ/318 kcal", extract kcal part
-        if (labelCell.includes('wartość energetyczna') || labelCell.includes('energia')) {
-          const kcalMatch = valueCell.match(/(\d+[,.]?\d*)\s*kcal/i)
-          if (kcalMatch && nutrition.calories === undefined) {
-            const value = parsePolishNumber(kcalMatch[1])
-            if (value !== null) {
-              nutrition.calories = value
-            }
-          }
-          return
-        }
-        
-        for (const [label, field] of Object.entries(labelMappings)) {
-          if (labelCell.includes(label)) {
-            if ((nutrition as any)[field] !== undefined) break
-            
-            const value = parsePolishNumber(valueCell)
-            if (value !== null) {
-              ;(nutrition as any)[field] = value
-            }
-            break
-          }
-        }
+        parseLTableRow(labelText, valueText)
       })
     })
     

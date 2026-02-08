@@ -5,6 +5,7 @@
  * Body: { force?: boolean }
  * 
  * Uses a multi-source fallback chain:
+ * 0. Open Food Facts API
  * 1. Leclerc.com.pl
  * 2. Leclerc24.net.pl
  * 
@@ -116,7 +117,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     
     console.log(`[Fill From Leclerc] Fetching nutrition for barcode: ${product.barcode}`)
     
-    // Resolve nutrition from multiple sources (Leclerc.com.pl → Leclerc24.net.pl)
+    // Resolve nutrition from multiple sources (OFF → Leclerc.com.pl → Leclerc24.net.pl)
     const resolveResult = await resolveNutritionWithFallbacks(
       product.barcode,
       force ? null : existingNutrition  // If forcing, don't pass existing data
@@ -125,7 +126,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (!resolveResult.hasData) {
       return NextResponse.json(
         { 
-          error: 'Nie znaleziono danych o wartościach odżywczych w żadnym ze źródeł (Leclerc.com.pl, Leclerc24.net.pl)',
+          error: 'Nie znaleziono danych o wartościach odżywczych w żadnym ze źródeł (Open Food Facts, Leclerc.com.pl, Leclerc24.net.pl)',
           sourceInfo: [],
         },
         { status: 404 }
