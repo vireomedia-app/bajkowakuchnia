@@ -1195,7 +1195,12 @@ export async function searchLeclerc24ProductUrls(barcode: string): Promise<strin
   // Leclerc24 uses a search URL pattern like: /szukaj?word=BARCODE
   const searchUrl = `${LECLERC24_BASE_URL}/szukaj?word=${encodeURIComponent(barcode)}`
   
-  console.log('[Leclerc24] Searching:', searchUrl)
+  console.log(`[Leclerc24-Search] ========================================`)
+  console.log(`[Leclerc24-Search] Searching for barcode: ${barcode}`)
+  console.log(`[Leclerc24-Search] URL: ${searchUrl}`)
+  console.log(`[Leclerc24-Search] Timeout: 25000ms`)
+  
+  const startTime = Date.now()
   
   try {
     const response = await fetchWithTimeout(searchUrl, {
@@ -1204,12 +1209,23 @@ export async function searchLeclerc24ProductUrls(barcode: string): Promise<strin
       },
     }, 25000) // Leclerc24 search can be very slow (~8s+)
     
+    const elapsed = Date.now() - startTime
+    console.log(`[Leclerc24-Search] Response received in ${elapsed}ms`)
+    console.log(`[Leclerc24-Search] HTTP Status: ${response.status} ${response.statusText}`)
+    console.log(`[Leclerc24-Search] Content-Type: ${response.headers.get('content-type')}`)
+    
     if (!response.ok) {
-      console.error(`[Leclerc24] Search failed with status ${response.status}`)
+      console.error(`[Leclerc24-Search] FAILED: HTTP ${response.status} ${response.statusText}`)
       return []
     }
     
     const html = await response.text()
+    console.log(`[Leclerc24-Search] HTML body received: ${html.length} characters`)
+    
+    if (html.length < 500) {
+      console.warn(`[Leclerc24-Search] WARNING: HTML body suspiciously small (${html.length} chars). Possibly blocked or error page.`)
+    }
+    
     const $ = cheerio.load(html)
     
     const productUrls = new Set<string>()
@@ -1227,7 +1243,11 @@ export async function searchLeclerc24ProductUrls(barcode: string): Promise<strin
     ]
     
     for (const selector of productListingSelectors) {
-      $(selector).each((_, element) => {
+      const matches = $(selector)
+      if (matches.length > 0) {
+        console.log(`[Leclerc24-Search] Selector "${selector}" matched ${matches.length} elements`)
+      }
+      matches.each((_, element) => {
         const href = $(element).attr('href')
         if (!href) return
         
@@ -1243,12 +1263,15 @@ export async function searchLeclerc24ProductUrls(barcode: string): Promise<strin
         }
       })
       
-      if (productUrls.size > 0) break
+      if (productUrls.size > 0) {
+        console.log(`[Leclerc24-Search] Found ${productUrls.size} product URL(s) via "${selector}"`)
+        break
+      }
     }
     
     // Strategy 2: Fallback - look at all links in main content
     if (productUrls.size === 0) {
-      console.log('[Leclerc24] No products in listing container, trying fallback extraction')
+      console.log('[Leclerc24-Search] No products in listing container, trying fallback link extraction...')
       
       $('main a[href], .content a[href], article a[href], body a[href]').each((_, element) => {
         const $el = $(element)
@@ -1272,17 +1295,26 @@ export async function searchLeclerc24ProductUrls(barcode: string): Promise<strin
           productUrls.add(absoluteUrl)
         }
       })
+      
+      if (productUrls.size === 0) {
+        console.log('[Leclerc24-Search] Product not found on Leclerc24 - no matching product URLs in search results')
+        // Log a snippet of the page title to help debug
+        const pageTitle = $('title').text().trim()
+        console.log(`[Leclerc24-Search] Page title: "${pageTitle}"`)
+      }
     }
     
     const results = Array.from(productUrls).slice(0, 10)
-    console.log(`[Leclerc24] Found ${results.length} candidate product URLs:`, results)
+    console.log(`[Leclerc24-Search] Final result: ${results.length} candidate URLs:`, results)
+    console.log(`[Leclerc24-Search] ========================================`)
     
     return results
   } catch (error) {
+    const elapsed = Date.now() - startTime
     if (error instanceof Error && error.name === 'AbortError') {
-      console.error('[Leclerc24] Search request timed out')
+      console.error(`[Leclerc24-Search] TIMEOUT after ${elapsed}ms - search request aborted`)
     } else {
-      console.error('[Leclerc24] Search error:', error)
+      console.error(`[Leclerc24-Search] ERROR after ${elapsed}ms:`, error instanceof Error ? error.message : error)
     }
     return []
   }
@@ -1301,25 +1333,43 @@ export async function scrapeLeclerc24NutritionFromProductPage(
   productUrl: string,
   barcode?: string
 ): Promise<LeclercNutritionData | null> {
-  console.log('[Leclerc24] Scraping product page:', productUrl)
+  console.log(`[Leclerc24-Scrape] ========================================`)
+  console.log(`[Leclerc24-Scrape] Scraping product page: ${productUrl}`)
+  console.log(`[Leclerc24-Scrape] Barcode: ${barcode || 'not provided'}`)
+  console.log(`[Leclerc24-Scrape] Timeout: 25000ms`)
+  
+  const startTime = Date.now()
   
   try {
     const response = await fetchWithTimeout(productUrl, {}, 25000) // Leclerc24 can be slow
     
+    const elapsed = Date.now() - startTime
+    console.log(`[Leclerc24-Scrape] Response received in ${elapsed}ms`)
+    console.log(`[Leclerc24-Scrape] HTTP Status: ${response.status} ${response.statusText}`)
+    console.log(`[Leclerc24-Scrape] Content-Type: ${response.headers.get('content-type')}`)
+    
     if (!response.ok) {
-      console.error(`[Leclerc24] Product page fetch failed with status ${response.status}`)
+      console.error(`[Leclerc24-Scrape] FAILED: HTTP ${response.status} ${response.statusText}`)
       return null
     }
     
     const html = await response.text()
+    console.log(`[Leclerc24-Scrape] HTML body received: ${html.length} characters`)
+    
+    if (html.length < 1000) {
+      console.warn(`[Leclerc24-Scrape] WARNING: HTML body very small (${html.length} chars) - possible error/blocked page`)
+    }
+    
     const $ = cheerio.load(html)
     
+    // Log page title for confirmation
+    const pageTitle = $('title').text().trim()
+    console.log(`[Leclerc24-Scrape] Page title: "${pageTitle}"`)
+    
     // Check if barcode appears on the page
-    const pageText = $.text().toLowerCase()
-    const barcodeFound = barcode ? pageText.includes(barcode.toLowerCase()) : false
-    if (barcodeFound) {
-      console.log('[Leclerc24] Barcode found on page - high confidence match')
-    }
+    const pageText = $.text()
+    const barcodeFound = barcode ? pageText.includes(barcode) : false
+    console.log(`[Leclerc24-Scrape] Barcode "${barcode}" found on page: ${barcodeFound}`)
     
     const nutrition: LeclercNutritionData = {
       sourceUrl: productUrl,
@@ -1331,37 +1381,45 @@ export async function scrapeLeclerc24NutritionFromProductPage(
      */
     const parseLTableRow = (labelText: string, valueText: string) => {
       const field = mapLeclercLabelToField(labelText)
+      console.log(`[Leclerc24-Scrape]   Row: label="${labelText}" value="${valueText}" -> field=${field || 'UNMAPPED'}`)
+      
       if (!field) return
       
       // For calories, use the specialized parser that extracts kcal from "kJ / kcal" format
       if (field === 'calories') {
         const value = parseCalorieValue(valueText)
+        console.log(`[Leclerc24-Scrape]   parseCalorieValue("${valueText}") = ${value}`)
         if (value !== null && nutrition.calories === undefined) {
           nutrition.calories = value
-          console.log(`[Leclerc24] Parsed calories: ${value}`)
+          console.log(`[Leclerc24-Scrape]   >> SET calories = ${value}`)
         }
         return
       }
       
       const value = parsePolishNumber(valueText)
+      console.log(`[Leclerc24-Scrape]   parsePolishNumber("${valueText}") = ${value}`)
       if (value !== null && (nutrition as any)[field] === undefined) {
         ;(nutrition as any)[field] = value
-        console.log(`[Leclerc24] Parsed ${field}: ${value}`)
+        console.log(`[Leclerc24-Scrape]   >> SET ${field} = ${value}`)
       }
     }
     
     // ==========================================================================
     // STRATEGY 0 (Most reliable): Find .l-table--nutritional-values directly
     // ==========================================================================
+    console.log(`[Leclerc24-Scrape] --- STRATEGY 0: Direct CSS class lookup ---`)
     const $directTable = $('.l-table--nutritional-values').first()
+    console.log(`[Leclerc24-Scrape] .l-table--nutritional-values found: ${$directTable.length > 0}`)
     
     if ($directTable.length) {
-      console.log('[Leclerc24] Found nutrition table via .l-table--nutritional-values class')
+      const rows = $directTable.find('.l-table__row')
+      console.log(`[Leclerc24-Scrape] Rows in nutrition table: ${rows.length}`)
       
-      $directTable.find('.l-table__row').each((_, row) => {
+      rows.each((idx, row) => {
         const $row = $(row)
         const cells = $row.find('.l-table__cell')
         
+        console.log(`[Leclerc24-Scrape]  Row[${idx}]: ${cells.length} cell(s)`)
         if (cells.length < 2) return
         
         const $labelSpan = $(cells[0]).find('.l-table__text')
@@ -1379,8 +1437,12 @@ export async function scrapeLeclerc24NutritionFromProductPage(
                                    nutrition.fat !== undefined ||
                                    nutrition.carbohydrates !== undefined
     
+    console.log(`[Leclerc24-Scrape] Strategy 0 result: hasData=${hasDataAfterStrategy0}`)
+    
     if (hasDataAfterStrategy0) {
-      console.log('[Leclerc24] Successfully extracted nutrition via .l-table--nutritional-values')
+      console.log(`[Leclerc24-Scrape] SUCCESS via Strategy 0 (.l-table--nutritional-values)`)
+      console.log(`[Leclerc24-Scrape] Final nutrition:`, JSON.stringify(nutrition, null, 2))
+      console.log(`[Leclerc24-Scrape] ========================================`)
       return nutrition
     }
     
@@ -1388,7 +1450,25 @@ export async function scrapeLeclerc24NutritionFromProductPage(
     // STRATEGY 1: Find nutrition heading and nearby l-table
     // Matches "Wartości odżywcze", "Obliczona wartość odżywcza", etc.
     // ==========================================================================
+    console.log(`[Leclerc24-Scrape] --- STRATEGY 1: Heading text search ---`)
     let foundNutritionTable = false
+    
+    // Check for known section headers
+    const sectionHeaders = $('h1, h2, h3, h4, h5, h6, .c-product-section-header__title')
+    console.log(`[Leclerc24-Scrape] Section headers on page: ${sectionHeaders.length}`)
+    sectionHeaders.each((i, el) => {
+      const tag = 'tagName' in el ? (el as any).tagName : 'unknown'
+      console.log(`[Leclerc24-Scrape]   Header[${i}]: <${tag}> "${$(el).text().trim().substring(0, 80)}"`)
+    })
+    
+    // Also check what l-table elements exist on the page
+    const allLTables = $('.l-table')
+    console.log(`[Leclerc24-Scrape] .l-table elements on page: ${allLTables.length}`)
+    allLTables.each((i, el) => {
+      const classes = $(el).attr('class') || ''
+      const textPreview = $(el).text().trim().substring(0, 100).replace(/\s+/g, ' ')
+      console.log(`[Leclerc24-Scrape]   l-table[${i}]: class="${classes}" text="${textPreview}..."`)
+    })
     
     $('*').each((_, el) => {
       if (foundNutritionTable) return false
@@ -1402,7 +1482,8 @@ export async function scrapeLeclerc24NutritionFromProductPage(
           text.includes('wartosci odzywcze') ||
           text.includes('wartość odżywcza') ||
           text.includes('wartosc odzywcza')) {
-        console.log(`[Leclerc24] Found nutrition heading: "${text.substring(0, 60)}"`)
+        const tagName = 'tagName' in el ? (el as any).tagName : 'unknown'
+        console.log(`[Leclerc24-Scrape] Found nutrition heading: <${tagName}> "${text.substring(0, 80)}"`)
         
         // Look for nutrition table (div-based l-table structure)
         let $nutritionContainer: ReturnType<typeof $> | null = null
@@ -1413,11 +1494,13 @@ export async function scrapeLeclerc24NutritionFromProductPage(
           const $sib = $(sib)
           if ($sib.hasClass('l-table') || $sib.hasClass('l-table--nutritional-values')) {
             $nutritionContainer = $sib
+            console.log(`[Leclerc24-Scrape] Found l-table in next sibling`)
             return false
           }
           const $found = $sib.find('.l-table, .l-table--nutritional-values').first()
           if ($found.length) {
             $nutritionContainer = $found
+            console.log(`[Leclerc24-Scrape] Found l-table inside next sibling`)
             return false
           }
         })
@@ -1428,10 +1511,12 @@ export async function scrapeLeclerc24NutritionFromProductPage(
           if ($parentNext.length) {
             if ($parentNext.hasClass('l-table') || $parentNext.hasClass('l-table--nutritional-values')) {
               $nutritionContainer = $parentNext
+              console.log(`[Leclerc24-Scrape] Found l-table as parent's next sibling`)
             } else {
               const $found = $parentNext.find('.l-table, .l-table--nutritional-values').first()
               if ($found.length) {
                 $nutritionContainer = $found
+                console.log(`[Leclerc24-Scrape] Found l-table inside parent's next sibling`)
               }
             }
           }
@@ -1444,21 +1529,24 @@ export async function scrapeLeclerc24NutritionFromProductPage(
             const $sib = $(sib)
             if ($sib.hasClass('l-table') || $sib.hasClass('l-table--nutritional-values')) {
               $nutritionContainer = $sib
+              console.log(`[Leclerc24-Scrape] Found l-table in parent's following siblings`)
               return false
             }
             const $found = $sib.find('.l-table, .l-table--nutritional-values').first()
             if ($found.length) {
               $nutritionContainer = $found
+              console.log(`[Leclerc24-Scrape] Found l-table inside parent's following siblings`)
               return false
             }
           })
         }
         
         if ($nutritionContainer && $nutritionContainer.length) {
-          console.log('[Leclerc24] Found nutrition table (l-table structure)')
           foundNutritionTable = true
+          const rows = $nutritionContainer.find('.l-table__row')
+          console.log(`[Leclerc24-Scrape] Nutrition l-table found with ${rows.length} rows`)
           
-          $nutritionContainer.find('.l-table__row').each((_, row) => {
+          rows.each((_, row) => {
             const $row = $(row)
             const cells = $row.find('.l-table__cell')
             
@@ -1471,6 +1559,8 @@ export async function scrapeLeclerc24NutritionFromProductPage(
             
             parseLTableRow(labelText, valueText)
           })
+        } else {
+          console.log(`[Leclerc24-Scrape] Heading found but no l-table nearby`)
         }
         
         // Also try HTML table structure
@@ -1492,7 +1582,7 @@ export async function scrapeLeclerc24NutritionFromProductPage(
           })
           
           if (foundTable !== null && (foundTable as any).length > 0) {
-            console.log('[Leclerc24] Found nutrition table (HTML table structure)')
+            console.log('[Leclerc24-Scrape] Found nutrition HTML <table>')
             foundNutritionTable = true
             
             const $tableEl = foundTable as ReturnType<typeof $>
@@ -1520,15 +1610,19 @@ export async function scrapeLeclerc24NutritionFromProductPage(
                                    nutrition.fat !== undefined ||
                                    nutrition.carbohydrates !== undefined
     
+    console.log(`[Leclerc24-Scrape] Strategy 1 result: hasData=${hasDataAfterStrategy1}`)
+    
     if (hasDataAfterStrategy1) {
-      console.log('[Leclerc24] Successfully extracted nutrition from heading-adjacent table')
+      console.log(`[Leclerc24-Scrape] SUCCESS via Strategy 1 (heading search)`)
+      console.log(`[Leclerc24-Scrape] Final nutrition:`, JSON.stringify(nutrition, null, 2))
+      console.log(`[Leclerc24-Scrape] ========================================`)
       return nutrition
     }
     
     // ==========================================================================
     // STRATEGY 2 (Fallback): Look for any div.l-table or <table> with nutrition content
     // ==========================================================================
-    console.log('[Leclerc24] Strategies 0-1 failed, trying fallback strategies...')
+    console.log(`[Leclerc24-Scrape] --- STRATEGY 2: Keyword scan in all tables ---`)
     
     // 2a: Check any div.l-table elements
     $('.l-table').each((_, ltable) => {
@@ -1540,7 +1634,7 @@ export async function scrapeLeclerc24NutritionFromProductPage(
       
       if (!hasNutritionContent) return
       
-      console.log('[Leclerc24] Found potential nutrition l-table (fallback)')
+      console.log('[Leclerc24-Scrape] Found potential nutrition l-table (fallback)')
       
       $ltable.find('.l-table__row').each((_, row) => {
         const $row = $(row)
@@ -1567,7 +1661,7 @@ export async function scrapeLeclerc24NutritionFromProductPage(
       
       if (!hasNutritionContent) return
       
-      console.log('[Leclerc24] Found potential nutrition HTML table (fallback)')
+      console.log('[Leclerc24-Scrape] Found potential nutrition HTML table (fallback)')
       
       $table.find('tr').each((_, row) => {
         const $row = $(row)
@@ -1588,19 +1682,25 @@ export async function scrapeLeclerc24NutritionFromProductPage(
                     nutrition.fat !== undefined ||
                     nutrition.carbohydrates !== undefined
     
+    console.log(`[Leclerc24-Scrape] Strategy 2 result: hasData=${hasData}`)
+    
     if (!hasData) {
-      console.log('[Leclerc24] No nutrition data found on page')
+      console.log('[Leclerc24-Scrape] Product found, but nutrition table missing - no parseable nutrition data on page')
+      console.log(`[Leclerc24-Scrape] ========================================`)
       return null
     }
     
-    console.log('[Leclerc24] Extracted nutrition data:', JSON.stringify(nutrition))
+    console.log(`[Leclerc24-Scrape] SUCCESS via Strategy 2 (fallback)`)
+    console.log(`[Leclerc24-Scrape] Final nutrition:`, JSON.stringify(nutrition, null, 2))
+    console.log(`[Leclerc24-Scrape] ========================================`)
     return nutrition
     
   } catch (error) {
+    const elapsed = Date.now() - startTime
     if (error instanceof Error && error.name === 'AbortError') {
-      console.error('[Leclerc24] Product page request timed out')
+      console.error(`[Leclerc24-Scrape] TIMEOUT after ${elapsed}ms - product page request aborted`)
     } else {
-      console.error('[Leclerc24] Product page scrape error:', error)
+      console.error(`[Leclerc24-Scrape] ERROR after ${elapsed}ms:`, error instanceof Error ? `${error.name}: ${error.message}` : error)
     }
     return null
   }
@@ -1615,21 +1715,30 @@ export async function scrapeLeclerc24NutritionFromProductPage(
 export async function fetchLeclerc24NutritionByBarcode(
   barcode: string
 ): Promise<LeclercResolveResult | null> {
-  console.log(`[Leclerc24] Resolving nutrition for barcode: ${barcode}`)
+  console.log(`[Leclerc24] ================================================`)
+  console.log(`[Leclerc24] fetchLeclerc24NutritionByBarcode("${barcode}")`)
+  console.log(`[Leclerc24] ================================================`)
+  
+  const totalStart = Date.now()
   
   // Step 1: Search for product URLs
+  console.log(`[Leclerc24] Step 1: Searching for product URLs...`)
   const productUrls = await searchLeclerc24ProductUrls(barcode)
   
   if (productUrls.length === 0) {
-    console.log('[Leclerc24] No product URLs found')
+    console.log('[Leclerc24] RESULT: No product URLs found on Leclerc24 for this barcode')
+    console.log(`[Leclerc24] Total time: ${Date.now() - totalStart}ms`)
     return null
   }
+  
+  console.log(`[Leclerc24] Step 2: Scraping ${productUrls.length} candidate page(s)...`)
   
   // Step 2: Try each candidate (max 5)
   const maxCandidates = Math.min(productUrls.length, 5)
   
   for (let i = 0; i < maxCandidates; i++) {
     const url = productUrls[i]
+    console.log(`[Leclerc24] Candidate ${i + 1}/${maxCandidates}: ${url}`)
     
     // Add delay between requests
     if (i > 0) {
@@ -1638,15 +1747,27 @@ export async function fetchLeclerc24NutritionByBarcode(
     
     const nutrition = await scrapeLeclerc24NutritionFromProductPage(url, barcode)
     
-    if (nutrition && hasMinimumNutritionData(nutrition)) {
-      console.log('[Leclerc24] Found valid nutrition data from:', url)
-      return {
-        data: nutrition,
-        url: url,
+    if (nutrition) {
+      const hasMin = hasMinimumNutritionData(nutrition)
+      console.log(`[Leclerc24] Nutrition from candidate ${i + 1}: calories=${nutrition.calories}, protein=${nutrition.protein}, fat=${nutrition.fat}, carbs=${nutrition.carbohydrates}`)
+      console.log(`[Leclerc24] hasMinimumNutritionData: ${hasMin} (need >=3 of 4 core fields)`)
+      
+      if (hasMin) {
+        console.log(`[Leclerc24] SUCCESS: Found valid nutrition data from: ${url}`)
+        console.log(`[Leclerc24] Total time: ${Date.now() - totalStart}ms`)
+        return {
+          data: nutrition,
+          url: url,
+        }
+      } else {
+        console.log(`[Leclerc24] Candidate ${i + 1} has insufficient data, trying next...`)
       }
+    } else {
+      console.log(`[Leclerc24] Candidate ${i + 1} returned null`)
     }
   }
   
-  console.log('[Leclerc24] No valid nutrition data found from any candidate')
+  console.log('[Leclerc24] RESULT: No valid nutrition data found from any candidate page')
+  console.log(`[Leclerc24] Total time: ${Date.now() - totalStart}ms`)
   return null
 }

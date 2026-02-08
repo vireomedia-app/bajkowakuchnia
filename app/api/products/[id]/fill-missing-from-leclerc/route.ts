@@ -41,6 +41,8 @@ interface RouteContext {
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
+  const routeStart = Date.now()
+  
   try {
     const resolvedParams = await context.params
     const productId = resolvedParams.id
@@ -63,7 +65,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     
     const { force } = parseResult.data
     
-    console.log(`[Fill From Leclerc] Product ID: ${productId}, Force: ${force}`)
+    console.log(`\n[Fill-Nutrition] ############################################`)
+    console.log(`[Fill-Nutrition] Product ID: ${productId}`)
+    console.log(`[Fill-Nutrition] Force overwrite: ${force}`)
+    console.log(`[Fill-Nutrition] ############################################`)
     
     // Fetch the product
     const product = await prisma.product.findUnique({
@@ -71,14 +76,19 @@ export async function POST(request: NextRequest, context: RouteContext) {
     })
     
     if (!product) {
+      console.log(`[Fill-Nutrition] ERROR: Product not found (ID: ${productId})`)
       return NextResponse.json(
         { error: 'Produkt nie został znaleziony' },
         { status: 404 }
       )
     }
     
+    console.log(`[Fill-Nutrition] Product: "${product.name}"`)
+    console.log(`[Fill-Nutrition] Barcode: ${product.barcode || 'NONE'}`)
+    
     // Check if product has a barcode
     if (!product.barcode) {
+      console.log(`[Fill-Nutrition] ERROR: Product has no barcode`)
       return NextResponse.json(
         { error: 'Produkt nie ma kodu kreskowego - nie można pobrać danych z Leclerc' },
         { status: 400 }
@@ -100,9 +110,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
     
     const missingBefore = getMissingNutritionFields(existingNutrition)
+    console.log(`[Fill-Nutrition] Existing nutrition:`, JSON.stringify(existingNutrition))
+    console.log(`[Fill-Nutrition] Missing fields (${missingBefore.length}): ${missingBefore.join(', ') || 'none'}`)
     
     // If not forcing and no fields are missing, skip the fetch
     if (!force && missingBefore.length === 0) {
+      console.log(`[Fill-Nutrition] All fields already filled - skipping fetch`)
       return NextResponse.json(
         { 
           message: 'Wszystkie pola wartości odżywczych są już uzupełnione',
@@ -115,7 +128,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       )
     }
     
-    console.log(`[Fill From Leclerc] Fetching nutrition for barcode: ${product.barcode}`)
+    console.log(`[Fill-Nutrition] Calling resolveNutritionWithFallbacks("${product.barcode}")...`)
     
     // Resolve nutrition from multiple sources (OFF → Leclerc.com.pl → Leclerc24.net.pl)
     const resolveResult = await resolveNutritionWithFallbacks(
@@ -123,7 +136,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
       force ? null : existingNutrition  // If forcing, don't pass existing data
     )
     
+    console.log(`[Fill-Nutrition] resolveNutritionWithFallbacks returned:`)
+    console.log(`[Fill-Nutrition]   hasData: ${resolveResult.hasData}`)
+    console.log(`[Fill-Nutrition]   sources: ${resolveResult.sourceInfo.join(', ') || 'NONE'}`)
+    console.log(`[Fill-Nutrition]   merged:`, JSON.stringify(resolveResult.merged))
+    
     if (!resolveResult.hasData) {
+      console.log(`[Fill-Nutrition] FAILED: No nutrition data found from any source`)
+      console.log(`[Fill-Nutrition] Total time: ${Date.now() - routeStart}ms`)
       return NextResponse.json(
         { 
           error: 'Nie znaleziono danych o wartościach odżywczych w żadnym ze źródeł (Open Food Facts, Leclerc.com.pl, Leclerc24.net.pl)',
@@ -155,17 +175,21 @@ export async function POST(request: NextRequest, context: RouteContext) {
         if (newValue !== undefined && newValue !== oldValue) {
           updateData[field] = newValue ?? null
           filledFields.push(field)
+          console.log(`[Fill-Nutrition]   ${field}: ${oldValue} -> ${newValue ?? null} (force)`)
         }
       } else {
         // In normal mode, only fill if old value was null/undefined
         if ((oldValue === null || oldValue === undefined) && newValue !== undefined && newValue !== null) {
           updateData[field] = newValue
           filledFields.push(field)
+          console.log(`[Fill-Nutrition]   ${field}: null -> ${newValue} (fill)`)
         }
       }
     }
     
     if (Object.keys(updateData).length === 0) {
+      console.log(`[Fill-Nutrition] No new data to update (all incoming values already exist or are null)`)
+      console.log(`[Fill-Nutrition] Total time: ${Date.now() - routeStart}ms`)
       return NextResponse.json(
         { 
           message: 'Brak nowych danych do uzupełnienia',
@@ -178,6 +202,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
       )
     }
     
+    console.log(`[Fill-Nutrition] Updating ${filledFields.length} fields in database:`, JSON.stringify(updateData))
+    
     // Update the product
     const updatedProduct = await prisma.product.update({
       where: { id: productId },
@@ -185,7 +211,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     })
     
     const sourceMessage = formatSourceInfoMessage(resolveResult.sourceInfo)
-    console.log(`[Fill From Leclerc] Updated ${filledFields.length} fields: ${filledFields.join(', ')}. Sources: ${resolveResult.sourceInfo.join(', ')}`)
+    console.log(`[Fill-Nutrition] SUCCESS: Updated ${filledFields.length} fields: ${filledFields.join(', ')}`)
+    console.log(`[Fill-Nutrition] Sources: ${resolveResult.sourceInfo.join(', ')}`)
+    console.log(`[Fill-Nutrition] Total time: ${Date.now() - routeStart}ms`)
+    console.log(`[Fill-Nutrition] ############################################\n`)
     
     return NextResponse.json(
       {
@@ -199,7 +228,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     )
     
   } catch (error) {
-    console.error('[Fill From Leclerc] Error:', error)
+    console.error(`[Fill-Nutrition] EXCEPTION after ${Date.now() - routeStart}ms:`, error)
     
     return NextResponse.json(
       { error: 'Błąd podczas pobierania danych z Leclerc' },
