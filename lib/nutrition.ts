@@ -408,137 +408,116 @@ async function fetchOpenFoodFactsNutrition(barcode: string): Promise<{
 }
 
 /**
- * Resolve nutrition data using multiple fallback sources.
+ * Resolve nutrition data from ALL external sources.
  * 
- * Order of resolution:
+ * ALWAYS queries every source (no skip logic):
  * 1. Open Food Facts API (fastest, most reliable)
  * 2. Leclerc.com.pl scraper
  * 3. Leclerc24.net.pl scraper
  * 
- * The function uses the existing data and only fills missing fields.
- * Each subsequent source only fills fields that are still missing after the previous source.
+ * Later sources overwrite earlier ones for any non-null fields,
+ * so the final result uses the best available data.
  * 
  * @param barcode - The product barcode
- * @param existingNutrition - Optional existing nutrition data to preserve
  * @returns Resolved nutrition data with source information
  */
 export async function resolveNutritionWithFallbacks(
   barcode: string,
-  existingNutrition?: NutritionLike | null
 ): Promise<NutritionResolveResult> {
   console.log(`\n[NutritionResolver] ====================================================`)
   console.log(`[NutritionResolver] Starting resolution for barcode: ${barcode}`)
-  console.log(`[NutritionResolver] Existing nutrition:`, existingNutrition ? JSON.stringify(extractNutritionFields(existingNutrition)) : 'none')
+  console.log(`[NutritionResolver] Mode: ALWAYS fetch all sources, overwrite`)
   console.log(`[NutritionResolver] ====================================================`)
   
   const totalStart = Date.now()
   
   const result: NutritionResolveResult = {
-    merged: existingNutrition ? extractNutritionFields(existingNutrition) : {},
+    merged: {},
     sourceInfo: [],
     sourceUrls: [],
     hasData: false,
   }
   
-  // Helper to check if we still need more data
-  const stillIncomplete = () => {
-    const incomplete = isNutritionIncomplete(result.merged)
-    console.log(`[NutritionResolver] Still incomplete: ${incomplete} (merged so far: calories=${result.merged.calories}, protein=${result.merged.protein}, fat=${result.merged.fat}, carbs=${result.merged.carbohydrates})`)
-    return incomplete
-  }
-  
   // ==========================================================================
   // SOURCE 0: Open Food Facts (fastest, most reliable)
   // ==========================================================================
-  if (stillIncomplete()) {
-    console.log('[NutritionResolver] --- SOURCE 0: Open Food Facts ---')
-    const offStart = Date.now()
-    try {
-      const offResult = await fetchOpenFoodFactsNutrition(barcode)
-      console.log(`[NutritionResolver] OFF completed in ${Date.now() - offStart}ms`)
+  console.log('[NutritionResolver] --- SOURCE 0: Open Food Facts ---')
+  const offStart = Date.now()
+  try {
+    const offResult = await fetchOpenFoodFactsNutrition(barcode)
+    console.log(`[NutritionResolver] OFF completed in ${Date.now() - offStart}ms`)
+    
+    if (offResult && offResult.data) {
+      console.log(`[NutritionResolver] OFF returned data:`, JSON.stringify(offResult.data))
+      result.fromOpenFoodFacts = offResult.data
+      result.sourceUrls.push(`https://world.openfoodfacts.org/product/${barcode}`)
       
-      if (offResult && offResult.data) {
-        console.log(`[NutritionResolver] OFF returned data:`, JSON.stringify(offResult.data))
-        result.fromOpenFoodFacts = offResult.data
-        result.sourceUrls.push(`https://world.openfoodfacts.org/product/${barcode}`)
-        
-        // Merge with existing (only fill missing)
-        result.merged = mergeNutritionPreferExisting(result.merged, offResult.data)
-        result.sourceInfo.push('Open Food Facts')
-        result.hasData = true
-        
-        console.log('[NutritionResolver] Merged after OFF:', JSON.stringify(result.merged))
-      } else {
-        console.log('[NutritionResolver] OFF returned null/no data')
-      }
-    } catch (error) {
-      console.error(`[NutritionResolver] OFF ERROR after ${Date.now() - offStart}ms:`, error instanceof Error ? error.message : error)
+      // Overwrite merged with OFF data
+      result.merged = mergeNutritionPreferExisting(result.merged, offResult.data, { force: true })
+      result.sourceInfo.push('Open Food Facts')
+      result.hasData = true
+      
+      console.log('[NutritionResolver] Merged after OFF:', JSON.stringify(result.merged))
+    } else {
+      console.log('[NutritionResolver] OFF returned null/no data')
     }
-  } else {
-    console.log('[NutritionResolver] Skipping OFF (already complete)')
+  } catch (error) {
+    console.error(`[NutritionResolver] OFF ERROR after ${Date.now() - offStart}ms:`, error instanceof Error ? error.message : error)
   }
   
   // ==========================================================================
-  // SOURCE 1: Leclerc.com.pl
+  // SOURCE 1: Leclerc.com.pl (ALWAYS tried)
   // ==========================================================================
-  if (stillIncomplete()) {
-    console.log('[NutritionResolver] --- SOURCE 1: Leclerc.com.pl ---')
-    const leclercStart = Date.now()
-    try {
-      const leclercResult = await fetchLeclercNutritionByBarcode(barcode)
-      console.log(`[NutritionResolver] Leclerc.com.pl completed in ${Date.now() - leclercStart}ms`)
+  console.log('[NutritionResolver] --- SOURCE 1: Leclerc.com.pl ---')
+  const leclercStart = Date.now()
+  try {
+    const leclercResult = await fetchLeclercNutritionByBarcode(barcode)
+    console.log(`[NutritionResolver] Leclerc.com.pl completed in ${Date.now() - leclercStart}ms`)
+    
+    if (leclercResult && leclercResult.data) {
+      console.log(`[NutritionResolver] Leclerc.com.pl returned data from: ${leclercResult.url}`)
+      result.fromLeclerc = leclercResult.data
+      result.sourceUrls.push(leclercResult.url)
       
-      if (leclercResult && leclercResult.data) {
-        console.log(`[NutritionResolver] Leclerc.com.pl returned data from: ${leclercResult.url}`)
-        result.fromLeclerc = leclercResult.data
-        result.sourceUrls.push(leclercResult.url)
-        
-        // Merge with existing (only fill missing)
-        result.merged = mergeNutritionPreferExisting(result.merged, leclercResult.data)
-        result.sourceInfo.push('Leclerc.com.pl')
-        result.hasData = true
-        
-        console.log('[NutritionResolver] Merged after Leclerc:', JSON.stringify(result.merged))
-      } else {
-        console.log('[NutritionResolver] Leclerc.com.pl returned null/no data')
-      }
-    } catch (error) {
-      console.error(`[NutritionResolver] Leclerc.com.pl ERROR after ${Date.now() - leclercStart}ms:`, error instanceof Error ? error.message : error)
+      // Overwrite merged with Leclerc data (later sources win)
+      result.merged = mergeNutritionPreferExisting(result.merged, leclercResult.data, { force: true })
+      result.sourceInfo.push('Leclerc.com.pl')
+      result.hasData = true
+      
+      console.log('[NutritionResolver] Merged after Leclerc:', JSON.stringify(result.merged))
+    } else {
+      console.log('[NutritionResolver] Leclerc.com.pl returned null/no data')
     }
-  } else {
-    console.log('[NutritionResolver] Skipping Leclerc.com.pl (already complete)')
+  } catch (error) {
+    console.error(`[NutritionResolver] Leclerc.com.pl ERROR after ${Date.now() - leclercStart}ms:`, error instanceof Error ? error.message : error)
   }
   
   // ==========================================================================
-  // SOURCE 2: Leclerc24.net.pl (if still incomplete)
+  // SOURCE 2: Leclerc24.net.pl (ALWAYS tried)
   // ==========================================================================
-  if (stillIncomplete()) {
-    console.log('[NutritionResolver] --- SOURCE 2: Leclerc24.net.pl ---')
-    const leclerc24Start = Date.now()
-    try {
-      const leclerc24Result = await fetchLeclerc24NutritionByBarcode(barcode)
-      console.log(`[NutritionResolver] Leclerc24.net.pl completed in ${Date.now() - leclerc24Start}ms`)
+  console.log('[NutritionResolver] --- SOURCE 2: Leclerc24.net.pl ---')
+  const leclerc24Start = Date.now()
+  try {
+    const leclerc24Result = await fetchLeclerc24NutritionByBarcode(barcode)
+    console.log(`[NutritionResolver] Leclerc24.net.pl completed in ${Date.now() - leclerc24Start}ms`)
+    
+    if (leclerc24Result && leclerc24Result.data) {
+      console.log(`[NutritionResolver] Leclerc24.net.pl returned data from: ${leclerc24Result.url}`)
+      console.log(`[NutritionResolver] Leclerc24 data:`, JSON.stringify(leclerc24Result.data))
+      result.fromLeclerc24 = leclerc24Result.data
+      result.sourceUrls.push(leclerc24Result.url)
       
-      if (leclerc24Result && leclerc24Result.data) {
-        console.log(`[NutritionResolver] Leclerc24.net.pl returned data from: ${leclerc24Result.url}`)
-        console.log(`[NutritionResolver] Leclerc24 data:`, JSON.stringify(leclerc24Result.data))
-        result.fromLeclerc24 = leclerc24Result.data
-        result.sourceUrls.push(leclerc24Result.url)
-        
-        // Merge with existing (only fill missing)
-        result.merged = mergeNutritionPreferExisting(result.merged, leclerc24Result.data)
-        result.sourceInfo.push('Leclerc24.net.pl')
-        result.hasData = true
-        
-        console.log('[NutritionResolver] Merged after Leclerc24:', JSON.stringify(result.merged))
-      } else {
-        console.log('[NutritionResolver] Leclerc24.net.pl returned null/no data')
-      }
-    } catch (error) {
-      console.error(`[NutritionResolver] Leclerc24.net.pl ERROR after ${Date.now() - leclerc24Start}ms:`, error instanceof Error ? error.message : error)
+      // Overwrite merged with Leclerc24 data (latest source wins)
+      result.merged = mergeNutritionPreferExisting(result.merged, leclerc24Result.data, { force: true })
+      result.sourceInfo.push('Leclerc24.net.pl')
+      result.hasData = true
+      
+      console.log('[NutritionResolver] Merged after Leclerc24:', JSON.stringify(result.merged))
+    } else {
+      console.log('[NutritionResolver] Leclerc24.net.pl returned null/no data')
     }
-  } else {
-    console.log('[NutritionResolver] Skipping Leclerc24.net.pl (already complete)')
+  } catch (error) {
+    console.error(`[NutritionResolver] Leclerc24.net.pl ERROR after ${Date.now() - leclerc24Start}ms:`, error instanceof Error ? error.message : error)
   }
   
   // Final status

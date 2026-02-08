@@ -183,25 +183,25 @@ export function ProductHeader({ product }: ProductHeaderProps) {
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {/* Kalorie */}
             <div className={`rounded-lg p-3 border-2 ${
-              product.calories && product.calories > 0 
+              product.calories !== null && product.calories !== undefined
                 ? 'bg-gray-50 border-gray-200' 
                 : 'bg-red-50 border-red-300'
             }`}>
               <div className="text-sm text-gray-600">Kalorie</div>
               <div className="text-lg font-semibold text-gray-900">
-                {product.calories && product.calories > 0 ? `${product.calories} kcal` : 'Brak danych'}
+                {product.calories !== null && product.calories !== undefined ? `${product.calories} kcal` : 'Brak danych'}
               </div>
             </div>
 
             {/* Białko */}
             <div className={`rounded-lg p-3 border-2 ${
-              product.protein !== null && product.protein !== undefined && product.protein > 0
+              product.protein !== null && product.protein !== undefined
                 ? 'bg-gray-50 border-gray-200' 
                 : 'bg-red-50 border-red-300'
             }`}>
               <div className="text-sm text-gray-600">Białko</div>
               <div className="text-lg font-semibold text-gray-900">
-                {product.protein !== null && product.protein !== undefined && product.protein > 0 
+                {product.protein !== null && product.protein !== undefined 
                   ? `${product.protein} g` 
                   : 'Brak danych'}
               </div>
@@ -209,34 +209,34 @@ export function ProductHeader({ product }: ProductHeaderProps) {
 
             {/* Tłuszcz */}
             <div className={`rounded-lg p-3 border-2 ${
-              product.fat !== null && product.fat !== undefined && product.fat > 0
+              product.fat !== null && product.fat !== undefined
                 ? 'bg-gray-50 border-gray-200' 
                 : 'bg-red-50 border-red-300'
             }`}>
               <div className="text-sm text-gray-600">Tłuszcz</div>
               <div className="text-lg font-semibold text-gray-900">
-                {product.fat !== null && product.fat !== undefined && product.fat > 0 
+                {product.fat !== null && product.fat !== undefined 
                   ? `${product.fat} g` 
                   : 'Brak danych'}
               </div>
-              {product.saturatedFat !== null && product.saturatedFat !== undefined && product.saturatedFat > 0 && (
+              {product.saturatedFat !== null && product.saturatedFat !== undefined && (
                 <div className="text-xs text-gray-500 mt-1">w tym nasycone: {product.saturatedFat} g</div>
               )}
             </div>
 
             {/* Węglowodany */}
             <div className={`rounded-lg p-3 border-2 ${
-              product.carbohydrates !== null && product.carbohydrates !== undefined && product.carbohydrates > 0
+              product.carbohydrates !== null && product.carbohydrates !== undefined
                 ? 'bg-gray-50 border-gray-200' 
                 : 'bg-red-50 border-red-300'
             }`}>
               <div className="text-sm text-gray-600">Węglowodany</div>
               <div className="text-lg font-semibold text-gray-900">
-                {product.carbohydrates !== null && product.carbohydrates !== undefined && product.carbohydrates > 0 
+                {product.carbohydrates !== null && product.carbohydrates !== undefined 
                   ? `${product.carbohydrates} g` 
                   : 'Brak danych'}
               </div>
-              {product.sugars !== null && product.sugars !== undefined && product.sugars > 0 && (
+              {product.sugars !== null && product.sugars !== undefined && (
                 <div className="text-xs text-gray-500 mt-1">w tym cukry: {product.sugars} g</div>
               )}
             </div>
@@ -257,13 +257,13 @@ export function ProductHeader({ product }: ProductHeaderProps) {
 
             {/* Wapń */}
             <div className={`rounded-lg p-3 border-2 ${
-              product.calcium !== null && product.calcium !== undefined && product.calcium > 0
+              product.calcium !== null && product.calcium !== undefined
                 ? 'bg-gray-50 border-gray-200' 
                 : 'bg-red-50 border-red-300'
             }`}>
               <div className="text-sm text-gray-600">Wapń</div>
               <div className="text-lg font-semibold text-gray-900">
-                {product.calcium !== null && product.calcium !== undefined && product.calcium > 0 
+                {product.calcium !== null && product.calcium !== undefined 
                   ? `${product.calcium} mg` 
                   : 'Brak danych'}
               </div>
@@ -271,13 +271,13 @@ export function ProductHeader({ product }: ProductHeaderProps) {
 
             {/* Żelazo */}
             <div className={`rounded-lg p-3 border-2 ${
-              product.iron !== null && product.iron !== undefined && product.iron > 0
+              product.iron !== null && product.iron !== undefined
                 ? 'bg-gray-50 border-gray-200' 
                 : 'bg-red-50 border-red-300'
             }`}>
               <div className="text-sm text-gray-600">Żelazo</div>
               <div className="text-lg font-semibold text-gray-900">
-                {product.iron !== null && product.iron !== undefined && product.iron > 0 
+                {product.iron !== null && product.iron !== undefined 
                   ? `${product.iron} mg` 
                   : 'Brak danych'}
               </div>
@@ -285,13 +285,13 @@ export function ProductHeader({ product }: ProductHeaderProps) {
 
             {/* Witamina C */}
             <div className={`rounded-lg p-3 border-2 ${
-              product.vitaminC !== null && product.vitaminC !== undefined && product.vitaminC > 0
+              product.vitaminC !== null && product.vitaminC !== undefined
                 ? 'bg-gray-50 border-gray-200' 
                 : 'bg-red-50 border-red-300'
             }`}>
               <div className="text-sm text-gray-600">Witamina C</div>
               <div className="text-lg font-semibold text-gray-900">
-                {product.vitaminC !== null && product.vitaminC !== undefined && product.vitaminC > 0 
+                {product.vitaminC !== null && product.vitaminC !== undefined 
                   ? `${product.vitaminC} mg` 
                   : 'Brak danych'}
               </div>

@@ -140,6 +140,11 @@ function parsePolishNumber(raw: string | undefined | null): number | null {
   const trimmed = raw.trim()
   if (!trimmed) return null
   
+  // If the value starts with "<" (e.g., "<0,5 g", "< 1", "<0.1"), treat as 0
+  if (trimmed.startsWith('<')) {
+    return 0
+  }
+  
   // Remove everything except digits, comma, dot, minus
   const cleaned = trimmed.replace(/[^0-9,.\-]+/g, '')
   if (!cleaned) return null
