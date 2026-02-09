@@ -365,9 +365,9 @@ async function fetchOpenFoodFactsNutrition(barcode: string): Promise<{
       sugars: n.sugars_100g ?? null,
       salt: n.salt_100g ?? null,
       fiber: n.fiber_100g ?? null,
-      calcium: n.calcium_100g ? n.calcium_100g * 1000 : null,
-      iron: n.iron_100g ? n.iron_100g * 1000 : null,
-      vitaminC: n['vitamin-c_100g'] ? n['vitamin-c_100g'] * 1000 : null,
+      calcium: n.calcium_100g != null ? n.calcium_100g * 1000 : null,
+      iron: n.iron_100g != null ? n.iron_100g * 1000 : null,
+      vitaminC: n['vitamin-c_100g'] != null ? n['vitamin-c_100g'] * 1000 : null,
     }
     
     // Map allergens

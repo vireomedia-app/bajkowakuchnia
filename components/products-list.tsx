@@ -26,9 +26,9 @@ interface ProductsListProps {
   onToggleSelect?: (productId: string) => void
 }
 
-// Helper function to check if nutritional value exists
+// Helper function to check if nutritional value exists (0 is a valid value, only null/undefined is "missing")
 function hasValue(value: number | null | undefined): boolean {
-  return value !== null && value !== undefined && value > 0
+  return value !== null && value !== undefined
 }
 
 // Component for missing barcode indicator

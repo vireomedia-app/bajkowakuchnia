@@ -205,21 +205,21 @@ export async function GET(request: NextRequest) {
         name: product.product_name_pl || product.product_name || '',
         barcode: barcode,
         manufacturer: product.brands || '',
-        calories: product.nutriments?.['energy-kcal_100g'] || null,
-        salt: product.nutriments?.salt_100g || null,
-        protein: product.nutriments?.proteins_100g || null,
-        fat: product.nutriments?.fat_100g || null,
-        saturatedFat: product.nutriments?.['saturated-fat_100g'] || null,
-        carbohydrates: product.nutriments?.carbohydrates_100g || null,
-        sugars: product.nutriments?.sugars_100g || null,
-        fiber: product.nutriments?.fiber_100g || null,
-        calcium: product.nutriments?.calcium_100g 
+        calories: product.nutriments?.['energy-kcal_100g'] ?? null,
+        salt: product.nutriments?.salt_100g ?? null,
+        protein: product.nutriments?.proteins_100g ?? null,
+        fat: product.nutriments?.fat_100g ?? null,
+        saturatedFat: product.nutriments?.['saturated-fat_100g'] ?? null,
+        carbohydrates: product.nutriments?.carbohydrates_100g ?? null,
+        sugars: product.nutriments?.sugars_100g ?? null,
+        fiber: product.nutriments?.fiber_100g ?? null,
+        calcium: product.nutriments?.calcium_100g != null
           ? product.nutriments.calcium_100g * 1000 // Konwersja z g na mg
           : null,
-        iron: product.nutriments?.iron_100g 
+        iron: product.nutriments?.iron_100g != null
           ? product.nutriments.iron_100g * 1000 // Konwersja z g na mg
           : null,
-        vitaminC: product.nutriments?.['vitamin-c_100g'] 
+        vitaminC: product.nutriments?.['vitamin-c_100g'] != null
           ? product.nutriments['vitamin-c_100g'] * 1000 // Konwersja z g na mg
           : null,
         allergens: mapAllergens(product.allergens_tags),
