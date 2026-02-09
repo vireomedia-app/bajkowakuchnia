@@ -490,7 +490,7 @@ function ProductForm({
                   type="number"
                   value={nutritionalValues[field.key]}
                   onChange={(e) => handleNutritionalChange(field.key, e.target.value)}
-                  placeholder="0"
+                  placeholder=""
                   step="0.01"
                   className={`mt-0.5 h-8 text-sm ${isMissing ? 'border-yellow-300 bg-yellow-50' : ''}`}
                 />

@@ -456,7 +456,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                       onChange={(e) =>
                         setFormData({ ...formData, calories: e.target.value })
                       }
-                      placeholder="0"
+                      placeholder=""
                     />
                   </div>
 
@@ -471,7 +471,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                       onChange={(e) =>
                         setFormData({ ...formData, fat: e.target.value })
                       }
-                      placeholder="0"
+                      placeholder=""
                     />
                   </div>
 
@@ -488,7 +488,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                       onChange={(e) =>
                         setFormData({ ...formData, saturatedFat: e.target.value })
                       }
-                      placeholder="0"
+                      placeholder=""
                     />
                   </div>
 
@@ -503,7 +503,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                       onChange={(e) =>
                         setFormData({ ...formData, carbohydrates: e.target.value })
                       }
-                      placeholder="0"
+                      placeholder=""
                     />
                   </div>
 
@@ -520,7 +520,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                       onChange={(e) =>
                         setFormData({ ...formData, sugars: e.target.value })
                       }
-                      placeholder="0"
+                      placeholder=""
                     />
                   </div>
 
@@ -535,7 +535,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                       onChange={(e) =>
                         setFormData({ ...formData, fiber: e.target.value })
                       }
-                      placeholder="0"
+                      placeholder=""
                     />
                   </div>
 
@@ -550,7 +550,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                       onChange={(e) =>
                         setFormData({ ...formData, protein: e.target.value })
                       }
-                      placeholder="0"
+                      placeholder=""
                     />
                   </div>
 
@@ -565,7 +565,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                       onChange={(e) =>
                         setFormData({ ...formData, salt: e.target.value })
                       }
-                      placeholder="0"
+                      placeholder=""
                     />
                   </div>
 
@@ -580,7 +580,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                       onChange={(e) =>
                         setFormData({ ...formData, calcium: e.target.value })
                       }
-                      placeholder="0"
+                      placeholder=""
                     />
                   </div>
 
@@ -595,7 +595,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                       onChange={(e) =>
                         setFormData({ ...formData, iron: e.target.value })
                       }
-                      placeholder="0"
+                      placeholder=""
                     />
                   </div>
 
@@ -610,7 +610,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                       onChange={(e) =>
                         setFormData({ ...formData, vitaminC: e.target.value })
                       }
-                      placeholder="0"
+                      placeholder=""
                     />
                   </div>
                 </div>
