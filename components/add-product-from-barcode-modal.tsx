@@ -165,7 +165,6 @@ export function AddProductFromBarcodeModal({
     setIsSaving(true)
 
     try {
-      // Note: 'fiber' is intentionally excluded from productData sent to API (no DB column)
       const productData = {
         name: name.trim(),
         manufacturer: manufacturer.trim() || null,
@@ -179,6 +178,7 @@ export function AddProductFromBarcodeModal({
         saturatedFat: nutritionalValues.saturatedFat ? parseFloat(nutritionalValues.saturatedFat) : null,
         carbohydrates: nutritionalValues.carbohydrates ? parseFloat(nutritionalValues.carbohydrates) : null,
         sugars: nutritionalValues.sugars ? parseFloat(nutritionalValues.sugars) : null,
+        fiber: nutritionalValues.fiber ? parseFloat(nutritionalValues.fiber) : null,
         salt: nutritionalValues.salt ? parseFloat(nutritionalValues.salt) : null,
         calcium: nutritionalValues.calcium ? parseFloat(nutritionalValues.calcium) : null,
         iron: nutritionalValues.iron ? parseFloat(nutritionalValues.iron) : null,

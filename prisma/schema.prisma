@@ -27,6 +27,7 @@ model Product {
   saturatedFat  Float?        // Kwasy tłuszczowe nasycone w 100g (g)
   carbohydrates Float?        // Węglowodany w 100g (g)
   sugars        Float?        // Cukry w 100g (g)
+  fiber         Float?        // Błonnik w 100g (g)
   calcium       Float?        // Wapń w 100g (mg)
   iron          Float?        // Żelazo w 100g (mg)
   vitaminC      Float?        // Witamina C w 100g (mg)

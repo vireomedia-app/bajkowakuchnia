@@ -226,6 +226,7 @@ export function AddProductModal({ isOpen, onClose, initialName = '', initialData
         saturatedFat: formData.saturatedFat ? parseFloat(formData.saturatedFat) : null,
         carbohydrates: formData.carbohydrates ? parseFloat(formData.carbohydrates) : null,
         sugars: formData.sugars ? parseFloat(formData.sugars) : null,
+        fiber: formData.fiber ? parseFloat(formData.fiber) : null,
         calcium: formData.calcium ? parseFloat(formData.calcium) : null,
         iron: formData.iron ? parseFloat(formData.iron) : null,
         vitaminC: formData.vitaminC ? parseFloat(formData.vitaminC) : null,

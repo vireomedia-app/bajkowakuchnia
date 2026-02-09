@@ -75,6 +75,7 @@ const createProductSchema = z.object({
   saturatedFat: z.number().nullable().optional(),
   carbohydrates: z.number().nullable().optional(),
   sugars: z.number().nullable().optional(),
+  fiber: z.number().nullable().optional(),
   calcium: z.number().nullable().optional(),
   iron: z.number().nullable().optional(),
   vitaminC: z.number().nullable().optional(),

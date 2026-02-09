@@ -52,6 +52,7 @@ export async function createProduct(data: {
   saturatedFat?: number | null
   carbohydrates?: number | null
   sugars?: number | null
+  fiber?: number | null
   calcium?: number | null
   iron?: number | null
   vitaminC?: number | null
@@ -89,6 +90,7 @@ export async function createProduct(data: {
           saturatedFat: data.saturatedFat,
           carbohydrates: data.carbohydrates,
           sugars: data.sugars,
+          fiber: data.fiber,
           calcium: data.calcium,
           iron: data.iron,
           vitaminC: data.vitaminC,

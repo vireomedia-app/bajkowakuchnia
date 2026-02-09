@@ -57,6 +57,7 @@ function NutritionalIndicators({ product }: { product: Product }) {
     { key: 'B', label: 'Białko', value: product.protein },
     { key: 'T', label: 'Tłuszcz', value: product.fat },
     { key: 'W', label: 'Węglowodany', value: product.carbohydrates },
+    { key: 'F', label: 'Błonnik', value: product.fiber },
     { key: 'Ca', label: 'Wapń', value: product.calcium },
     { key: 'Fe', label: 'Żelazo', value: product.iron },
     { key: 'C', label: 'Witamina C', value: product.vitaminC },

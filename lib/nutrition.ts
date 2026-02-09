@@ -38,6 +38,7 @@ const CORE_NUTRITION_FIELDS: (keyof NutritionLike)[] = [
   'protein',
   'fat',
   'carbohydrates',
+  'fiber',
 ]
 
 /**
