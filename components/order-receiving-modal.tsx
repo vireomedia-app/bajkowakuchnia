@@ -6,12 +6,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { PackagePlus, X, CheckCircle, Barcode, Package, Edit3, ArrowRight, Bluetooth, Camera, Loader2, Keyboard } from 'lucide-react'
+import { PackagePlus, X, CheckCircle, Barcode, Package, Edit3, ArrowRight, Bluetooth, Camera, Loader2, Keyboard, FileSearch } from 'lucide-react'
 import { BarcodeScanner } from '@/components/barcode-scanner'
 import { OrderQuantityModal } from '@/components/order-quantity-modal'
 import { SearchProductForManualAdd } from '@/components/search-product-for-manual-add'
 import { AddProductFromBarcodeModal } from '@/components/add-product-from-barcode-modal'
 import { AlphanumericKeyboardModal } from '@/components/alphanumeric-keyboard-modal'
+import { WzScanReview } from '@/components/wz-scan-review'
 import { toast } from 'sonner'
 import { isValidBarcode, getBarcodeValidationError } from '@/lib/barcode'
 
@@ -28,7 +29,7 @@ interface OrderReceivingModalProps {
   onClose: () => void
 }
 
-type ModalStep = 'document_number' | 'method_choice' | 'processing'
+type ModalStep = 'document_number' | 'method_choice' | 'processing' | 'wz_scan'
 type AddingMethod = 'scan' | 'manual' | 'bluetooth' | 'manual_barcode' | null
 
 export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProps) {
@@ -60,6 +61,9 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
   const barcodeBuffer = useRef('')
   const lastKeyTime = useRef(0)
   
+  // WZ scan processing state
+  const [isWzProcessing, setIsWzProcessing] = useState(false)
+
   // Alphanumeric keyboard state
   const [showKeyboard, setShowKeyboard] = useState(false)
   const [keyboardTarget, setKeyboardTarget] = useState<'document' | 'bluetooth' | 'manual_barcode'>('document')
@@ -302,6 +306,63 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
     }
   }
 
+  // Handler for WZ scan confirm – batch-add all verified items as INCOME transactions
+  const handleWzConfirm = async (
+    items: { productId: string; productName: string; quantity: number; unit: string }[]
+  ) => {
+    setIsWzProcessing(true)
+    const today = new Date().toLocaleDateString('pl-PL')
+    const cleanDocNo = documentNumber?.trim()
+    let successCount = 0
+    let errorCount = 0
+
+    for (const item of items) {
+      try {
+        const payload = {
+          date: new Date().toISOString(),
+          type: 'INCOME' as const,
+          quantity: item.quantity,
+          document: cleanDocNo ? `Dostawa ${cleanDocNo} - ${today}` : `Dostawa - ${today}`,
+        }
+
+        const response = await fetch(`/api/products/${item.productId}/transactions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+
+        if (!response.ok) throw new Error()
+
+        setScannedProducts((prev) => [
+          ...prev,
+          {
+            id: item.productId,
+            name: item.productName,
+            unit: item.unit,
+            barcode: 'WZ',
+            quantity: item.quantity,
+          },
+        ])
+        successCount++
+      } catch {
+        errorCount++
+      }
+    }
+
+    setIsWzProcessing(false)
+
+    if (successCount > 0) {
+      toast.success(`Dodano ${successCount} ${successCount === 1 ? 'pozycję' : successCount < 5 ? 'pozycje' : 'pozycji'} z dokumentu WZ`)
+    }
+    if (errorCount > 0) {
+      toast.error(`Nie udało się dodać ${errorCount} ${errorCount === 1 ? 'pozycji' : 'pozycji'}`)
+    }
+
+    // Go back to processing step with the scanned items summary
+    setCurrentStep('processing')
+    setAddingMethod('manual') // so the user can keep adding manually if needed
+  }
+
   const handleClose = () => {
     // Pokaż podsumowanie jeśli były zeskanowane produkty
     if (scannedProducts.length > 0) {
@@ -324,6 +385,7 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
     setAddingMethod(null)
     setBluetoothBarcode('')
     setManualBarcodeInput('')
+    setIsWzProcessing(false)
     barcodeBuffer.current = ''
     onClose()
   }
@@ -421,6 +483,11 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
                 Wybierz sposób dodawania produktów
               </DialogDescription>
             )}
+            {currentStep === 'wz_scan' && (
+              <DialogDescription>
+                Zeskanuj dokument dostawy – system odczyta pozycje automatycznie
+              </DialogDescription>
+            )}
           </DialogHeader>
 
           <div className="space-y-6 overflow-y-auto flex-1">
@@ -475,6 +542,19 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
                     Ten numer będzie przypisany do wszystkich produktów w tej dostawie
                   </p>
                 </div>
+
+                {/* WZ Scan button */}
+                <Button
+                  onClick={() => setCurrentStep('wz_scan')}
+                  variant="outline"
+                  className="w-full h-auto py-3 border-2 border-dashed border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 flex items-center gap-3"
+                >
+                  <FileSearch className="w-6 h-6 flex-shrink-0" />
+                  <div className="text-left">
+                    <p className="font-semibold text-sm">Zeskanuj WZ / Fakturę</p>
+                    <p className="text-xs opacity-70 font-normal">Zrób zdjęcie dokumentu – system odczyta pozycje automatycznie</p>
+                  </div>
+                </Button>
 
                 <div className="flex space-x-3 pt-4">
                   <Button
@@ -568,6 +648,32 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
                   <X className="w-4 h-4 mr-2" />
                   Wróć
                 </Button>
+              </div>
+            )}
+
+            {/* KROK: Skanowanie WZ */}
+            {currentStep === 'wz_scan' && (
+              <WzScanReview
+                documentNumber={documentNumber}
+                onDocumentNumberDetected={(docNo) => {
+                  if (!documentNumber) {
+                    setDocumentNumber(docNo)
+                    toast.info(`Wykryto numer dokumentu: ${docNo}`)
+                  }
+                }}
+                onConfirm={handleWzConfirm}
+                onCancel={() => setCurrentStep('document_number')}
+              />
+            )}
+
+            {/* Overlay while WZ items are being added */}
+            {isWzProcessing && (
+              <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center">
+                <div className="bg-white rounded-lg p-6 text-center space-y-3">
+                  <Loader2 className="w-10 h-10 mx-auto text-green-600 animate-spin" />
+                  <p className="font-medium text-gray-800">Dodaję pozycje z WZ...</p>
+                  <p className="text-sm text-gray-500">Proszę nie zamykać okna</p>
+                </div>
               </div>
             )}
 
