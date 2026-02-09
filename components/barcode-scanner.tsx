@@ -184,34 +184,41 @@ export function BarcodeScanner({ isOpen, onClose, onScanSuccess, mode = 'add_pro
       }
 
       const productData = await response.json()
-      
+
       if (mode === 'receive_order') {
         // W trybie przyjmowania zamówienia - produkt nie jest w bazie
-        // Przekaż kod do rodzica, który pokaże modal dodawania
+        // Przekaż dane z API (OFF/Leclerc) razem z kodem, aby uniknąć podwójnego fetcha
+        // Flaga _externalNotFound jest przekazywana z backendu jeśli nic nie znaleziono
         toast.dismiss('barcode-search')
-        onScanSuccess({ _notInDatabase: true, barcode: barcode })
+        onScanSuccess({ _notInDatabase: true, barcode: barcode, ...productData })
         onClose()
       } else {
-        // W trybie dodawania produktu - nowy produkt to sukces
-        toast.success('Produkt znaleziony!', { id: 'barcode-search' })
-        onScanSuccess(productData)
-        onClose()
+        // W trybie dodawania produktu
+        if (productData._externalNotFound) {
+          // Backend zwrócił 200 ale żadne zewnętrzne API nie znalazło produktu
+          toast.dismiss('barcode-search')
+          setScannedBarcode(barcode)
+          setShowManualAddDialog(true)
+          setIsLoading(false)
+        } else {
+          toast.success('Produkt znaleziony!', { id: 'barcode-search' })
+          onScanSuccess(productData)
+          onClose()
+        }
       }
       
     } catch (err: any) {
       console.error('Error fetching product data:', err)
       
-      // W trybie dodawania produktu - zapytaj czy dodać produkt ręcznie
+      // Prawdziwy błąd sieci/parsowania – zapytaj użytkownika
       if (mode === 'add_product') {
         toast.dismiss('barcode-search')
         setScannedBarcode(barcode)
         setShowManualAddDialog(true)
         setIsLoading(false)
       } else {
-        // W trybie przyjmowania zamówienia - produkt nie znaleziony
-        // Przekaż kod do rodzica, który pokaże modal dodawania
         toast.dismiss('barcode-search')
-        onScanSuccess({ _notInDatabase: true, barcode: barcode })
+        onScanSuccess({ _notInDatabase: true, _externalNotFound: true, barcode: barcode })
         onClose()
       }
     }

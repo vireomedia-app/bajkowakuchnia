@@ -46,6 +46,7 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
   // Modal dodawania produktu z kodu kreskowego
   const [showAddProductModal, setShowAddProductModal] = useState(false)
   const [pendingBarcode, setPendingBarcode] = useState('')
+  const [pendingExternalData, setPendingExternalData] = useState<any>(null)
   
   // Manual barcode entry state
   const [manualBarcodeInput, setManualBarcodeInput] = useState('')
@@ -195,7 +196,10 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
         toast.success(`Znaleziono: ${data.existingProduct.name}`)
       } else {
         // Produkt NIE jest w naszej bazie - pokaż modal dodawania
+        // Przekazujemy dane z API (jeśli są) aby uniknąć podwójnego fetcha
         setPendingBarcode(barcode)
+        setPendingExternalData(data)
+        setShowKeyboard(false) // zamknij klawiaturę przed otwarciem modalu
         setShowAddProductModal(true)
         // Króki flash żeby użytkownik widział że coś się stało
         setLastNotFoundBarcode(barcode)
@@ -233,7 +237,11 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
     // Sprawdź czy produkt nie jest w bazie (flaga z BarcodeScanner)
     if (productData._notInDatabase && productData.barcode) {
       // Produkt nie jest w bazie - pokaż modal dodawania
-      setPendingBarcode(productData.barcode)
+      // Przekaż dane z API (OFF/Leclerc) jeśli są, żeby uniknąć podwójnego fetcha
+      const { _notInDatabase, _externalNotFound, barcode, ...externalData } = productData
+      setPendingBarcode(barcode)
+      setPendingExternalData(_externalNotFound ? { _externalNotFound: true } : externalData)
+      setShowKeyboard(false) // zamknij klawiaturę
       setShowAddProductModal(true)
       return
     }
@@ -380,6 +388,8 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
     setShowQuantityModal(false)
     setShowAddProductModal(false)
     setPendingBarcode('')
+    setPendingExternalData(null)
+    setShowKeyboard(false)
     setCurrentStep('document_number')
     setDocumentNumber('')
     setAddingMethod(null)
@@ -404,6 +414,7 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
   const handleAddProductModalClose = () => {
     setShowAddProductModal(false)
     setPendingBarcode('')
+    setPendingExternalData(null)
     // Wróć do odpowiedniej metody skanowania
     if (addingMethod === 'bluetooth') {
       focusBluetoothInput()
@@ -919,6 +930,7 @@ export function OrderReceivingModal({ isOpen, onClose }: OrderReceivingModalProp
         isOpen={showAddProductModal}
         onClose={handleAddProductModalClose}
         barcode={pendingBarcode}
+        prefetchedData={pendingExternalData}
         onProductAdded={handleProductAddedFromBarcode}
       />
 

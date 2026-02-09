@@ -185,12 +185,14 @@ export function InventoryPageClient({ products, searchQuery: initialSearchQuery,
       
       if (response.status === 409) {
         toast.info(`Produkt już istnieje w bazie: "${data.existingProduct?.name}"`)
-      } else if (response.ok) {
+      } else if (response.ok && !data._externalNotFound) {
+        // Znaleziono dane w zewnętrznych API
         setScannedProductData({ ...data, barcode })
         setShowBluetoothScanner(false)
         setIsAddModalOpen(true)
         toast.success(`Znaleziono: ${data.name}`)
       } else {
+        // Nie znaleziono w żadnym zewnętrznym API (_externalNotFound) lub błąd
         setScannedProductData({ barcode, name: generateUnknownProductName(), _notInDatabase: true })
         setShowBluetoothScanner(false)
         setIsAddModalOpen(true)

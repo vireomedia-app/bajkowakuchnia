@@ -167,8 +167,10 @@ export async function GET(request: NextRequest) {
       iron: number | null
       vitaminC: number | null
       allergens: number[]
-      source: 'off' | 'leclerc' | 'off+leclerc' | 'none'
+      source: string        // kept for backward compat
+      sources: string[]     // new: array of contributing sources
       leclercUrl?: string
+      _externalNotFound?: boolean
     }
 
     let offDataFound = false
@@ -195,6 +197,7 @@ export async function GET(request: NextRequest) {
         vitaminC: null,
         allergens: [],
         source: 'none',
+        sources: [],
       }
     } else {
       offDataFound = true
@@ -224,6 +227,7 @@ export async function GET(request: NextRequest) {
           : null,
         allergens: mapAllergens(product.allergens_tags),
         source: 'off',
+        sources: [],
       }
 
       console.log('Znaleziono produkt w Open Food Facts:', productData.name)
@@ -334,7 +338,9 @@ export async function GET(request: NextRequest) {
       console.error('Błąd podczas pobierania danych z Leclerc24.net.pl:', leclerc24Error)
     }
 
-    // Update source indicator based on which sources contributed
+    // Update source indicators
+    productData.sources = [...sourcesList]
+
     if (sourcesList.length > 0) {
       if (sourcesList.length === 1 && sourcesList[0] === 'OpenFoodFacts') {
         productData.source = 'off'
@@ -385,15 +391,17 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // If we still have no data at all, return 404
+    // If no external source contributed data, return a 200 with _externalNotFound flag
+    // (not a 404 – the API worked fine, it just didn't find anything)
     if (!offDataFound && !leclercDataFound && !leclerc24DataFound && !sourcesList.includes('Google')) {
+      console.log('Żadne zewnętrzne źródło nie znalazło danych dla kodu:', barcode)
       return NextResponse.json(
-        { error: 'Produkt nie został znaleziony w bazie Open Food Facts ani Leclerc' },
-        { status: 404 }
+        { _externalNotFound: true, barcode, sources: [] },
+        { status: 200 }
       )
     }
 
-    console.log('Zwracam produkt:', { ...productData, source: productData.source })
+    console.log('Zwracam produkt:', { name: productData.name, sources: productData.sources })
 
     return NextResponse.json(productData, { status: 200 })
     
