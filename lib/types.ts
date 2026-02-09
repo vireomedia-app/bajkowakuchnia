@@ -18,6 +18,7 @@ export interface Product {
   saturatedFat?: number | null
   carbohydrates?: number | null
   sugars?: number | null
+  fiber?: number | null
   calcium?: number | null
   iron?: number | null
   vitaminC?: number | null
@@ -102,6 +103,7 @@ export interface RecipeWithNutrition extends Recipe {
     carbohydrates: number
     sugars: number
     salt: number
+    fiber: number
     calcium: number
     iron: number
     vitaminC: number
@@ -200,6 +202,7 @@ export interface DailyNutrition {
   carbohydrates: number
   sugars: number
   salt: number
+  fiber: number
   calcium: number
   iron: number
   vitaminC: number

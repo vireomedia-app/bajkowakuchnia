@@ -95,9 +95,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const filledFields: string[] = []
     const updateData: Record<string, number | null> = {}
     
+    // Note: 'fiber' is intentionally excluded - no DB column for it
     const nutritionFields = [
       'calories', 'protein', 'fat', 'saturatedFat', 'carbohydrates',
-      'sugars', 'salt', 'fiber', 'calcium', 'iron', 'vitaminC'
+      'sugars', 'salt', 'calcium', 'iron', 'vitaminC'
     ] as const
     
     for (const field of nutritionFields) {

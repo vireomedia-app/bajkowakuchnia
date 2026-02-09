@@ -364,6 +364,7 @@ async function fetchOpenFoodFactsNutrition(barcode: string): Promise<{
       carbohydrates: n.carbohydrates_100g ?? null,
       sugars: n.sugars_100g ?? null,
       salt: n.salt_100g ?? null,
+      fiber: n.fiber_100g ?? null,
       calcium: n.calcium_100g ? n.calcium_100g * 1000 : null,
       iron: n.iron_100g ? n.iron_100g * 1000 : null,
       vitaminC: n['vitamin-c_100g'] ? n['vitamin-c_100g'] * 1000 : null,
@@ -415,8 +416,8 @@ async function fetchOpenFoodFactsNutrition(barcode: string): Promise<{
  * 2. Leclerc.com.pl scraper
  * 3. Leclerc24.net.pl scraper
  * 
- * Later sources overwrite earlier ones for any non-null fields,
- * so the final result uses the best available data.
+ * OFF initializes the merged result. Leclerc sources only fill null fields
+ * (they do not override existing non-null values from OFF).
  * 
  * @param barcode - The product barcode
  * @returns Resolved nutrition data with source information
@@ -426,7 +427,7 @@ export async function resolveNutritionWithFallbacks(
 ): Promise<NutritionResolveResult> {
   console.log(`\n[NutritionResolver] ====================================================`)
   console.log(`[NutritionResolver] Starting resolution for barcode: ${barcode}`)
-  console.log(`[NutritionResolver] Mode: ALWAYS fetch all sources, overwrite`)
+  console.log(`[NutritionResolver] Mode: OFF initializes, Leclerc fills nulls`)
   console.log(`[NutritionResolver] ====================================================`)
   
   const totalStart = Date.now()
@@ -479,8 +480,8 @@ export async function resolveNutritionWithFallbacks(
       result.fromLeclerc = leclercResult.data
       result.sourceUrls.push(leclercResult.url)
       
-      // Overwrite merged with Leclerc data (later sources win)
-      result.merged = mergeNutritionPreferExisting(result.merged, leclercResult.data, { force: true })
+      // Fill null fields from Leclerc (preserve existing OFF values)
+      result.merged = mergeNutritionPreferExisting(result.merged, leclercResult.data)
       result.sourceInfo.push('Leclerc.com.pl')
       result.hasData = true
       
@@ -507,8 +508,8 @@ export async function resolveNutritionWithFallbacks(
       result.fromLeclerc24 = leclerc24Result.data
       result.sourceUrls.push(leclerc24Result.url)
       
-      // Overwrite merged with Leclerc24 data (latest source wins)
-      result.merged = mergeNutritionPreferExisting(result.merged, leclerc24Result.data, { force: true })
+      // Fill remaining null fields from Leclerc24 (preserve existing values)
+      result.merged = mergeNutritionPreferExisting(result.merged, leclerc24Result.data)
       result.sourceInfo.push('Leclerc24.net.pl')
       result.hasData = true
       

@@ -54,6 +54,7 @@ export function ProductHeader({ product }: ProductHeaderProps) {
               saturatedFat: product.saturatedFat,
               carbohydrates: product.carbohydrates,
               sugars: product.sugars,
+              fiber: product.fiber,
               calcium: product.calcium,
               iron: product.iron,
               vitaminC: product.vitaminC,
@@ -193,20 +194,6 @@ export function ProductHeader({ product }: ProductHeaderProps) {
               </div>
             </div>
 
-            {/* Białko */}
-            <div className={`rounded-lg p-3 border-2 ${
-              product.protein !== null && product.protein !== undefined
-                ? 'bg-gray-50 border-gray-200' 
-                : 'bg-red-50 border-red-300'
-            }`}>
-              <div className="text-sm text-gray-600">Białko</div>
-              <div className="text-lg font-semibold text-gray-900">
-                {product.protein !== null && product.protein !== undefined 
-                  ? `${product.protein} g` 
-                  : 'Brak danych'}
-              </div>
-            </div>
-
             {/* Tłuszcz */}
             <div className={`rounded-lg p-3 border-2 ${
               product.fat !== null && product.fat !== undefined
@@ -239,6 +226,34 @@ export function ProductHeader({ product }: ProductHeaderProps) {
               {product.sugars !== null && product.sugars !== undefined && (
                 <div className="text-xs text-gray-500 mt-1">w tym cukry: {product.sugars} g</div>
               )}
+            </div>
+
+            {/* Błonnik */}
+            <div className={`rounded-lg p-3 border-2 ${
+              product.fiber !== null && product.fiber !== undefined
+                ? 'bg-gray-50 border-gray-200' 
+                : 'bg-red-50 border-red-300'
+            }`}>
+              <div className="text-sm text-gray-600">Błonnik</div>
+              <div className="text-lg font-semibold text-gray-900">
+                {product.fiber !== null && product.fiber !== undefined 
+                  ? `${product.fiber} g` 
+                  : 'Brak danych'}
+              </div>
+            </div>
+
+            {/* Białko */}
+            <div className={`rounded-lg p-3 border-2 ${
+              product.protein !== null && product.protein !== undefined
+                ? 'bg-gray-50 border-gray-200' 
+                : 'bg-red-50 border-red-300'
+            }`}>
+              <div className="text-sm text-gray-600">Białko</div>
+              <div className="text-lg font-semibold text-gray-900">
+                {product.protein !== null && product.protein !== undefined 
+                  ? `${product.protein} g` 
+                  : 'Brak danych'}
+              </div>
             </div>
 
             {/* Sól */}

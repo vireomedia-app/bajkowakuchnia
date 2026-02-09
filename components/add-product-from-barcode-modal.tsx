@@ -35,11 +35,12 @@ const COMMON_UNITS = [
 
 const NUTRITIONAL_FIELDS = [
   { key: 'calories', label: 'Kalorie (kcal/100g)', required: true },
-  { key: 'protein', label: 'Białko (g/100g)', required: true },
   { key: 'fat', label: 'Tłuszcz (g/100g)', required: true },
   { key: 'saturatedFat', label: 'Tłuszcz nasycony (g/100g)', required: false },
   { key: 'carbohydrates', label: 'Węglowodany (g/100g)', required: true },
   { key: 'sugars', label: 'Cukry (g/100g)', required: true },
+  { key: 'fiber', label: 'Błonnik (g/100g)', required: false },
+  { key: 'protein', label: 'Białko (g/100g)', required: true },
   { key: 'salt', label: 'Sól (g/100g)', required: false },
   { key: 'calcium', label: 'Wapń (mg/100g)', required: false },
   { key: 'iron', label: 'Żelazo (mg/100g)', required: false },
@@ -164,6 +165,7 @@ export function AddProductFromBarcodeModal({
     setIsSaving(true)
 
     try {
+      // Note: 'fiber' is intentionally excluded from productData sent to API (no DB column)
       const productData = {
         name: name.trim(),
         manufacturer: manufacturer.trim() || null,

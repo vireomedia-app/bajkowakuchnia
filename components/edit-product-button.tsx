@@ -23,6 +23,7 @@ interface EditProductButtonProps {
     saturatedFat?: number | null;
     carbohydrates?: number | null;
     sugars?: number | null;
+    fiber?: number | null;
     calcium?: number | null;
     iron?: number | null;
     vitaminC?: number | null;

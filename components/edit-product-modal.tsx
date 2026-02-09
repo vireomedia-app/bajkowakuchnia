@@ -46,6 +46,7 @@ interface EditProductModalProps {
     saturatedFat?: number | null;
     carbohydrates?: number | null;
     sugars?: number | null;
+    fiber?: number | null;
     calcium?: number | null;
     iron?: number | null;
     vitaminC?: number | null;
@@ -126,6 +127,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
     saturatedFat: product.saturatedFat?.toString() || "",
     carbohydrates: product.carbohydrates?.toString() || "",
     sugars: product.sugars?.toString() || "",
+    fiber: product.fiber?.toString() || "",
     calcium: product.calcium?.toString() || "",
     iron: product.iron?.toString() || "",
     vitaminC: product.vitaminC?.toString() || "",
@@ -150,6 +152,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
       saturatedFat: product.saturatedFat?.toString() || "",
       carbohydrates: product.carbohydrates?.toString() || "",
       sugars: product.sugars?.toString() || "",
+      fiber: product.fiber?.toString() || "",
       calcium: product.calcium?.toString() || "",
       iron: product.iron?.toString() || "",
       vitaminC: product.vitaminC?.toString() || "",
@@ -441,7 +444,7 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                 </h3>
                 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
+                  <div className="grid gap-2 col-span-2">
                     <Label htmlFor="calories">Kalorie (kcal)</Label>
                     <Input
                       id="calories"
@@ -451,36 +454,6 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                       value={formData.calories}
                       onChange={(e) =>
                         setFormData({ ...formData, calories: e.target.value })
-                      }
-                      placeholder="0"
-                    />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="salt">Sól (g)</Label>
-                    <Input
-                      id="salt"
-                      type="number"
-                      step="0.00001"
-                      min="0"
-                      value={formData.salt}
-                      onChange={(e) =>
-                        setFormData({ ...formData, salt: e.target.value })
-                      }
-                      placeholder="0"
-                    />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="protein">Białko (g)</Label>
-                    <Input
-                      id="protein"
-                      type="number"
-                      step="0.00001"
-                      min="0"
-                      value={formData.protein}
-                      onChange={(e) =>
-                        setFormData({ ...formData, protein: e.target.value })
                       }
                       placeholder="0"
                     />
@@ -545,6 +518,51 @@ export function EditProductModal({ open, onOpenChange, product }: EditProductMod
                       value={formData.sugars}
                       onChange={(e) =>
                         setFormData({ ...formData, sugars: e.target.value })
+                      }
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <div className="grid gap-2 col-span-2">
+                    <Label htmlFor="fiber">Błonnik (g)</Label>
+                    <Input
+                      id="fiber"
+                      type="number"
+                      step="0.00001"
+                      min="0"
+                      value={formData.fiber}
+                      onChange={(e) =>
+                        setFormData({ ...formData, fiber: e.target.value })
+                      }
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <div className="grid gap-2 col-span-2">
+                    <Label htmlFor="protein">Białko (g)</Label>
+                    <Input
+                      id="protein"
+                      type="number"
+                      step="0.00001"
+                      min="0"
+                      value={formData.protein}
+                      onChange={(e) =>
+                        setFormData({ ...formData, protein: e.target.value })
+                      }
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <div className="grid gap-2 col-span-2">
+                    <Label htmlFor="salt">Sól (g)</Label>
+                    <Input
+                      id="salt"
+                      type="number"
+                      step="0.00001"
+                      min="0"
+                      value={formData.salt}
+                      onChange={(e) =>
+                        setFormData({ ...formData, salt: e.target.value })
                       }
                       placeholder="0"
                     />

@@ -61,6 +61,7 @@ async function getMealPlan(id: string) {
               carbohydrates: 0,
               sugars: 0,
               salt: 0,
+              fiber: 0,
               calcium: 0,
               iron: 0,
               vitaminC: 0
@@ -127,6 +128,7 @@ async function getRecipes() {
         carbohydrates: 0,
         sugars: 0,
         salt: 0,
+        fiber: 0,
         calcium: 0,
         iron: 0,
         vitaminC: 0

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { fetchLeclercNutritionByBarcode, fetchLeclerc24NutritionByBarcode } from '@/lib/leclerc'
-import { isNutritionIncomplete, mergeNutritionPreferExisting, NutritionLike } from '@/lib/nutrition'
+import { mergeNutritionPreferExisting, NutritionLike } from '@/lib/nutrition'
 import { isValidBarcode, getBarcodeValidationError } from '@/lib/barcode'
 
 // This endpoint requires Node.js runtime (not Edge) for external HTTP requests to Leclerc
@@ -21,6 +21,7 @@ interface OpenFoodFactsProduct {
       'saturated-fat_100g'?: number
       carbohydrates_100g?: number
       sugars_100g?: number
+      fiber_100g?: number
       calcium_100g?: number
       iron_100g?: number
       'vitamin-c_100g'?: number
@@ -161,6 +162,7 @@ export async function GET(request: NextRequest) {
       saturatedFat: number | null
       carbohydrates: number | null
       sugars: number | null
+      fiber: number | null
       calcium: number | null
       iron: number | null
       vitaminC: number | null
@@ -187,6 +189,7 @@ export async function GET(request: NextRequest) {
         saturatedFat: null,
         carbohydrates: null,
         sugars: null,
+        fiber: null,
         calcium: null,
         iron: null,
         vitaminC: null,
@@ -209,6 +212,7 @@ export async function GET(request: NextRequest) {
         saturatedFat: product.nutriments?.['saturated-fat_100g'] || null,
         carbohydrates: product.nutriments?.carbohydrates_100g || null,
         sugars: product.nutriments?.sugars_100g || null,
+        fiber: product.nutriments?.fiber_100g || null,
         calcium: product.nutriments?.calcium_100g 
           ? product.nutriments.calcium_100g * 1000 // Konwersja z g na mg
           : null,
@@ -225,7 +229,7 @@ export async function GET(request: NextRequest) {
       console.log('Znaleziono produkt w Open Food Facts:', productData.name)
     }
 
-    // Check if nutrition is incomplete and try Leclerc sources as fallback
+    // Build nutrition data for merging across sources
     let nutritionData: NutritionLike = {
       calories: productData.calories,
       protein: productData.protein,
@@ -234,6 +238,7 @@ export async function GET(request: NextRequest) {
       saturatedFat: productData.saturatedFat,
       sugars: productData.sugars,
       salt: productData.salt,
+      fiber: productData.fiber,
       calcium: productData.calcium,
       iron: productData.iron,
       vitaminC: productData.vitaminC,
@@ -243,91 +248,90 @@ export async function GET(request: NextRequest) {
     const sourcesList: string[] = offDataFound ? ['OpenFoodFacts'] : []
 
     // ==========================================================================
-    // FALLBACK 1: Leclerc.com.pl
+    // SOURCE 1: Leclerc.com.pl (ALWAYS tried, regardless of OFF result)
     // ==========================================================================
-    if (isNutritionIncomplete(nutritionData) || !offDataFound) {
-      console.log('Dane odżywcze niekompletne lub brak danych z OFF, próbuję Leclerc.com.pl...')
+    console.log('Próbuję Leclerc.com.pl (zawsze, niezależnie od OFF)...')
+    
+    try {
+      const leclercResult = await fetchLeclercNutritionByBarcode(barcode)
       
-      try {
-        const leclercResult = await fetchLeclercNutritionByBarcode(barcode)
+      if (leclercResult) {
+        leclercDataFound = true
+        sourcesList.push('Leclerc.com.pl')
+        console.log('Znaleziono dane w Leclerc.com.pl:', leclercResult.url)
         
-        if (leclercResult) {
-          leclercDataFound = true
-          sourcesList.push('Leclerc.com.pl')
-          console.log('Znaleziono dane w Leclerc.com.pl:', leclercResult.url)
-          
-          // Merge Leclerc data into product data (only fill missing fields)
-          const mergedNutrition = mergeNutritionPreferExisting(nutritionData, leclercResult.data)
-          
-          // Update product data with merged nutrition
-          productData.calories = mergedNutrition.calories ?? productData.calories
-          productData.protein = mergedNutrition.protein ?? productData.protein
-          productData.fat = mergedNutrition.fat ?? productData.fat
-          productData.saturatedFat = mergedNutrition.saturatedFat ?? productData.saturatedFat
-          productData.carbohydrates = mergedNutrition.carbohydrates ?? productData.carbohydrates
-          productData.sugars = mergedNutrition.sugars ?? productData.sugars
-          productData.salt = mergedNutrition.salt ?? productData.salt
-          productData.calcium = mergedNutrition.calcium ?? productData.calcium
-          productData.iron = mergedNutrition.iron ?? productData.iron
-          productData.vitaminC = mergedNutrition.vitaminC ?? productData.vitaminC
-          productData.leclercUrl = leclercResult.url
-          
-          // Update nutritionData for next check
-          nutritionData = {
-            calories: productData.calories,
-            protein: productData.protein,
-            fat: productData.fat,
-            carbohydrates: productData.carbohydrates,
-            saturatedFat: productData.saturatedFat,
-            sugars: productData.sugars,
-            salt: productData.salt,
-            calcium: productData.calcium,
-            iron: productData.iron,
-            vitaminC: productData.vitaminC,
-          }
+        // Merge Leclerc data into product data (only fill missing fields)
+        const mergedNutrition = mergeNutritionPreferExisting(nutritionData, leclercResult.data)
+        
+        // Update product data with merged nutrition
+        productData.calories = mergedNutrition.calories ?? productData.calories
+        productData.protein = mergedNutrition.protein ?? productData.protein
+        productData.fat = mergedNutrition.fat ?? productData.fat
+        productData.saturatedFat = mergedNutrition.saturatedFat ?? productData.saturatedFat
+        productData.carbohydrates = mergedNutrition.carbohydrates ?? productData.carbohydrates
+        productData.sugars = mergedNutrition.sugars ?? productData.sugars
+        productData.salt = mergedNutrition.salt ?? productData.salt
+        productData.fiber = mergedNutrition.fiber ?? productData.fiber
+        productData.calcium = mergedNutrition.calcium ?? productData.calcium
+        productData.iron = mergedNutrition.iron ?? productData.iron
+        productData.vitaminC = mergedNutrition.vitaminC ?? productData.vitaminC
+        productData.leclercUrl = leclercResult.url
+        
+        // Update nutritionData for next source
+        nutritionData = {
+          calories: productData.calories,
+          protein: productData.protein,
+          fat: productData.fat,
+          carbohydrates: productData.carbohydrates,
+          saturatedFat: productData.saturatedFat,
+          sugars: productData.sugars,
+          salt: productData.salt,
+          fiber: productData.fiber,
+          calcium: productData.calcium,
+          iron: productData.iron,
+          vitaminC: productData.vitaminC,
         }
-      } catch (leclercError) {
-        console.error('Błąd podczas pobierania danych z Leclerc.com.pl:', leclercError)
       }
+    } catch (leclercError) {
+      console.error('Błąd podczas pobierania danych z Leclerc.com.pl:', leclercError)
     }
 
     // ==========================================================================
-    // FALLBACK 2: Leclerc24.net.pl (if still incomplete)
+    // SOURCE 2: Leclerc24.net.pl (ALWAYS tried, regardless of previous results)
     // ==========================================================================
-    if (isNutritionIncomplete(nutritionData) || (!offDataFound && !leclercDataFound)) {
-      console.log('Dane nadal niekompletne, próbuję Leclerc24.net.pl...')
+    console.log('Próbuję Leclerc24.net.pl (zawsze, niezależnie od poprzednich źródeł)...')
+    
+    try {
+      const leclerc24Result = await fetchLeclerc24NutritionByBarcode(barcode)
       
-      try {
-        const leclerc24Result = await fetchLeclerc24NutritionByBarcode(barcode)
+      if (leclerc24Result) {
+        leclerc24DataFound = true
+        sourcesList.push('Leclerc24.net.pl')
+        console.log('Znaleziono dane w Leclerc24.net.pl:', leclerc24Result.url)
         
-        if (leclerc24Result) {
-          leclerc24DataFound = true
-          sourcesList.push('Leclerc24.net.pl')
-          console.log('Znaleziono dane w Leclerc24.net.pl:', leclerc24Result.url)
-          
-          // Merge Leclerc24 data into product data (only fill missing fields)
-          const mergedNutrition = mergeNutritionPreferExisting(nutritionData, leclerc24Result.data)
-          
-          // Update product data with merged nutrition
-          productData.calories = mergedNutrition.calories ?? productData.calories
-          productData.protein = mergedNutrition.protein ?? productData.protein
-          productData.fat = mergedNutrition.fat ?? productData.fat
-          productData.saturatedFat = mergedNutrition.saturatedFat ?? productData.saturatedFat
-          productData.carbohydrates = mergedNutrition.carbohydrates ?? productData.carbohydrates
-          productData.sugars = mergedNutrition.sugars ?? productData.sugars
-          productData.salt = mergedNutrition.salt ?? productData.salt
-          productData.calcium = mergedNutrition.calcium ?? productData.calcium
-          productData.iron = mergedNutrition.iron ?? productData.iron
-          productData.vitaminC = mergedNutrition.vitaminC ?? productData.vitaminC
-          
-          // Store Leclerc24 URL if no Leclerc URL already set
-          if (!productData.leclercUrl) {
-            productData.leclercUrl = leclerc24Result.url
-          }
+        // Merge Leclerc24 data into product data (only fill missing fields)
+        const mergedNutrition = mergeNutritionPreferExisting(nutritionData, leclerc24Result.data)
+        
+        // Update product data with merged nutrition
+        productData.calories = mergedNutrition.calories ?? productData.calories
+        productData.protein = mergedNutrition.protein ?? productData.protein
+        productData.fat = mergedNutrition.fat ?? productData.fat
+        productData.saturatedFat = mergedNutrition.saturatedFat ?? productData.saturatedFat
+        productData.carbohydrates = mergedNutrition.carbohydrates ?? productData.carbohydrates
+        productData.sugars = mergedNutrition.sugars ?? productData.sugars
+        productData.salt = mergedNutrition.salt ?? productData.salt
+        productData.fiber = mergedNutrition.fiber ?? productData.fiber
+        productData.calcium = mergedNutrition.calcium ?? productData.calcium
+        productData.iron = mergedNutrition.iron ?? productData.iron
+        productData.vitaminC = mergedNutrition.vitaminC ?? productData.vitaminC
+        
+        // Store Leclerc24 URL if no Leclerc URL already set
+        if (!productData.leclercUrl) {
+          productData.leclercUrl = leclerc24Result.url
         }
-      } catch (leclerc24Error) {
-        console.error('Błąd podczas pobierania danych z Leclerc24.net.pl:', leclerc24Error)
       }
+    } catch (leclerc24Error) {
+      console.error('Błąd podczas pobierania danych z Leclerc24.net.pl:', leclerc24Error)
     }
 
     // Update source indicator based on which sources contributed
