@@ -10,6 +10,7 @@ import { Check, X, Loader2, Package, Barcode, Save, Trash2, AlertCircle, Keyboar
 import { toast } from 'sonner'
 import { AlphanumericKeyboardModal } from '@/components/alphanumeric-keyboard-modal'
 import { isValidBarcode, getBarcodeValidationError, generateUnknownProductName } from '@/lib/barcode'
+import { useScannerSound } from '@/hooks/use-scanner-sound'
 
 // LocalStorage key for persisting bulk add list
 const BULK_ADD_PRODUCTS_KEY = 'bulkAddProducts'
@@ -52,6 +53,7 @@ export function BulkProductScanner({ isOpen, onClose, onProductsAdded }: BulkPro
   const [keyboardProductId, setKeyboardProductId] = useState<string | null>(null)
   const [keyboardInitialValue, setKeyboardInitialValue] = useState('')
   const [isInitialized, setIsInitialized] = useState(false)
+  const { playSuccess, playError } = useScannerSound()
 
   // Load saved products from localStorage on mount
   useEffect(() => {
@@ -166,6 +168,7 @@ export function BulkProductScanner({ isOpen, onClose, onProductsAdded }: BulkPro
     // Validate barcode format
     if (!isValidBarcode(barcode)) {
       toast.error('Nieprawidłowy kod kreskowy: ' + getBarcodeValidationError(barcode))
+      playError()
       focusInput()
       return
     }
@@ -187,7 +190,7 @@ export function BulkProductScanner({ isOpen, onClose, onProductsAdded }: BulkPro
         // Product already exists in database - don't add to list
         toast.info(`Produkt już istnieje w bazie: "${data.existingProduct?.name || barcode}"`)
         focusInput()
-      } else if (response.ok) {
+      } else if (response.ok && !data._externalNotFound) {
         // Found in Open Food Facts and/or Leclerc
         const source = data.source as ScannedProduct['source'] || 'off'
         const newProduct: ScannedProduct = {
@@ -218,6 +221,7 @@ export function BulkProductScanner({ isOpen, onClose, onProductsAdded }: BulkPro
         } else {
           toast.success(`Znaleziono: ${newProduct.name}`)
         }
+        playSuccess()
       } else {
         // Not found - show red flash
         setLastNotFoundBarcode(barcode)
@@ -232,15 +236,17 @@ export function BulkProductScanner({ isOpen, onClose, onProductsAdded }: BulkPro
           found: false
         }
         setScannedProducts(prev => [...prev, newProduct])
+        playError()
       }
     } catch (error) {
       console.error('Error scanning barcode:', error)
       toast.error('Błąd podczas skanowania')
+      playError()
     } finally {
       setIsSearching(false)
       focusInput()
     }
-  }, [isSearching, scannedProducts, focusInput])
+  }, [isSearching, scannedProducts, focusInput, playSuccess, playError])
 
   const handleRemoveProduct = (id: string) => {
     setScannedProducts(prev => prev.filter(p => p.id !== id))
